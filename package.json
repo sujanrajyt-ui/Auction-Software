@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Vista Presents The Verdict — Universal Multi-Committee Real-Time Auction & Bidding Platform (NMAMIT)",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "node --no-warnings server/index.js --dev",
     "build": "vite build",
@@ -10,6 +13,7 @@
     "seed": "node --no-warnings server/seed.js --reset"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "@tailwindcss/vite": "^4.1.0",
     "@vitejs/plugin-react": "^4.3.4",
     "clsx": "^2.1.1",

@@ -12,12 +12,17 @@ import {
   normalizePlayerName
 } from '../shared/constants.js';
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const DEFAULT_DATA_DIR = process.env.VERCEL
+  ? '/tmp/verdict-data'
+  : path.resolve(process.cwd(), 'data');
+const DB_PATH = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.join(DEFAULT_DATA_DIR, 'verdict.sqlite');
+const DATA_DIR = path.dirname(DB_PATH);
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-const DB_PATH = path.join(DATA_DIR, 'verdict.sqlite');
 export const db = new DatabaseSync(DB_PATH);
 
 // Configure SQLite for high concurrency & strict foreign key integrity

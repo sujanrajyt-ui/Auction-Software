@@ -20,6 +20,7 @@ import {
 } from './db.js';
 import { ensureSeedData, createAuctionInstance } from './seed.js';
 import { resolveItemImage, resolveTeamIdentity } from './imageResolver.js';
+import { syncFromNeonIfNeeded, syncToNeon, isNeonEnabled } from './neonSync.js';
 import {
   AUCTION_STATES,
   ROLES,
@@ -81,6 +82,21 @@ const io = new SocketIOServer(server, {
 
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
+
+// Neon PostgreSQL synchronization middleware (active whenever DATABASE_URL is set)
+app.use('/api', async (req, res, next) => {
+  if (isNeonEnabled()) {
+    await syncFromNeonIfNeeded();
+    const origJson = res.json.bind(res);
+    res.json = async body => {
+      if (req.method !== 'GET' || req._didMutateDb) {
+        await syncToNeon();
+      }
+      return origJson(body);
+    };
+  }
+  next();
+});
 
 // Active session store (in-memory + deterministic HMAC token so restarts don't log users out!)
 const SECRET_SALT = 'vista_verdict_2027_nmamit_secret';
@@ -489,6 +505,27 @@ app.get('/api/public/auctions', (req, res) => {
 app.get('/api/auctions/:auctionId', (req, res) => {
   const { auctionId } = req.params;
   const user = extractUser(req);
+
+  // Serverless-friendly 3-second SOLD/UNSOLD overlay auto-advance check
+  try {
+    const rawAuction = db
+      .prepare('SELECT status, projectorOverlayJson FROM auctions WHERE id = ?')
+      .get(auctionId);
+    if (rawAuction?.projectorOverlayJson) {
+      const ov = JSON.parse(rawAuction.projectorOverlayJson);
+      if (ov?.expiresAt && Date.now() >= Number(ov.expiresAt)) {
+        clearAuctionTimer(auctionId);
+        advanceToNextItem(auctionId, {
+          id: 'system',
+          name: 'System Auto-Advance',
+          auctionRole: ROLES.AUCTIONEER
+        });
+        req._didMutateDb = true;
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
 
   let isAuthorizedAdmin = false;
   if (user?.kind === 'ADMIN') {
@@ -3759,4 +3796,10 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export { app };
+export default app;
+

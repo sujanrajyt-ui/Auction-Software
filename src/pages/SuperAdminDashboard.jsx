@@ -93,6 +93,11 @@ export default function SuperAdminDashboard() {
       return;
     }
     fetchOverview();
+    const isLocalHost =
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.startsWith('192.168.');
+    if (!isLocalHost) return;
     const socket = io(window.location.origin);
     socket.on('platform:updated', fetchOverview);
     return () => socket.disconnect();
