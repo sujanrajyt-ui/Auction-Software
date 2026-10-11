@@ -108,19 +108,19 @@ export default function ProjectorView() {
         </div>
 
         {/* OFFICIAL EVENT SPONSORS BAR (ALWAYS VISIBLE ON PROJECTOR) */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          {/* Title Sponsor: Side Quest */}
-          <div className="flex items-center gap-3 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-purple-950/80 via-slate-900/95 to-slate-900 border border-purple-500/40 shadow-lg">
+        <div className="flex items-center gap-4 sm:gap-5">
+          {/* Title Sponsor: Side Quest (Larger Hero Badge) */}
+          <div className="flex items-center gap-4 px-5 py-2 rounded-2xl bg-gradient-to-r from-purple-950/95 via-purple-900/60 to-slate-900 border-2 border-purple-400/70 shadow-2xl ring-2 ring-purple-500/25">
             <img
               src="/sponsors/sidequest-title-sponsor.jpg"
               alt="Side Quest - Title Sponsor"
-              className="h-11 w-11 rounded-xl object-cover border border-purple-400/50 shadow-md shrink-0"
+              className="h-16 w-16 rounded-2xl object-cover border-2 border-amber-400/80 shadow-xl shrink-0"
             />
-            <div className=" leading-tight">
-              <div className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-purple-300">
-                Title Sponsor
+            <div className="leading-tight">
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-amber-300">
+                ★ Title Sponsor
               </div>
-              <div className="font-display font-extrabold text-sm lg:text-base text-white tracking-wide uppercase">
+              <div className="font-display font-extrabold text-xl lg:text-2xl text-white tracking-wide uppercase drop-shadow">
                 Side Quest
               </div>
             </div>
@@ -128,7 +128,7 @@ export default function ProjectorView() {
 
           {/* Beverage Sponsor: Blinker */}
           <div className="flex items-center gap-3 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-950/70 via-slate-900/95 to-slate-900 border border-emerald-500/40 shadow-lg">
-            <div className="h-11 px-2 rounded-xl bg-white flex items-center justify-center border border-emerald-400/50 shadow-md shrink-0">
+            <div className="h-11 px-2.5 rounded-xl bg-white flex items-center justify-center border border-emerald-400/50 shadow-md shrink-0">
               <img
                 src="/sponsors/blinker-beverage-sponsor.jpg"
                 alt="Blinker - Beverage Sponsor"
@@ -517,36 +517,36 @@ export default function ProjectorView() {
             </p>
 
             {/* Large Sponsor Showcase on Standby Screen */}
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-6">
-              <div className="rounded-3xl bg-gradient-to-br from-purple-950/85 via-slate-900 to-slate-950 border-2 border-purple-500/50 p-6 flex items-center gap-5 shadow-2xl">
+            <div className="pt-4 flex flex-wrap items-center justify-center gap-8">
+              <div className="rounded-3xl bg-gradient-to-br from-purple-950/95 via-purple-900/50 to-slate-950 border-2 border-purple-400/80 ring-4 ring-purple-500/20 p-8 flex items-center gap-6 shadow-2xl scale-105">
                 <img
                   src="/sponsors/sidequest-title-sponsor.jpg"
                   alt="Side Quest - Title Sponsor"
-                  className="h-24 w-24 rounded-2xl object-cover border-2 border-purple-400/60 shadow-xl"
+                  className="h-32 w-32 rounded-3xl object-cover border-2 border-amber-400/80 shadow-2xl"
                 />
                 <div className="text-left">
-                  <div className="text-xs font-extrabold uppercase tracking-[0.25em] text-purple-300">
-                    Title Sponsor
+                  <div className="text-sm font-extrabold uppercase tracking-[0.25em] text-amber-300">
+                    ★ Title Sponsor
                   </div>
-                  <div className="font-display text-3xl lg:text-4xl font-extrabold text-white uppercase mt-1">
+                  <div className="font-display text-4xl lg:text-6xl font-extrabold text-white uppercase mt-1 drop-shadow">
                     Side Quest
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-3xl bg-gradient-to-br from-emerald-950/80 via-slate-900 to-slate-950 border-2 border-emerald-500/50 p-6 flex items-center gap-5 shadow-2xl">
-                <div className="h-24 px-5 rounded-2xl bg-white flex items-center justify-center border-2 border-emerald-400/60 shadow-xl">
+              <div className="rounded-3xl bg-gradient-to-br from-emerald-950/80 via-slate-900 to-slate-950 border-2 border-emerald-500/50 p-5 flex items-center gap-5 shadow-2xl">
+                <div className="h-20 px-4 rounded-2xl bg-white flex items-center justify-center border-2 border-emerald-400/60 shadow-xl">
                   <img
                     src="/sponsors/blinker-beverage-sponsor.jpg"
                     alt="Blinker - Beverage Sponsor"
-                    className="h-16 w-auto object-contain"
+                    className="h-14 w-auto object-contain"
                   />
                 </div>
                 <div className="text-left">
                   <div className="text-xs font-extrabold uppercase tracking-[0.25em] text-emerald-300">
                     Beverage Sponsor
                   </div>
-                  <div className="font-display text-3xl lg:text-4xl font-extrabold text-white uppercase mt-1">
+                  <div className="font-display text-2xl lg:text-3xl font-extrabold text-white uppercase mt-1">
                     Blinker
                   </div>
                 </div>
