@@ -163,7 +163,7 @@ export async function ensureNeonInitialized() {
       `;
 
       const rows = await sql`
-        SELECT version, payload FROM verdict_state_snapshot WHERE id = 1
+        SELECT version, payload FROM verdict_state_snapshot WHERE id = 2
       `;
 
       if (rows.length === 0) {
@@ -171,7 +171,7 @@ export async function ensureNeonInitialized() {
         const payloadStr = JSON.stringify(initialDump);
         await sql`
           INSERT INTO verdict_state_snapshot (id, version, payload, updated_at)
-          VALUES (1, 1, ${payloadStr}::jsonb, NOW())
+          VALUES (2, 1, ${payloadStr}::jsonb, NOW())
         `;
         localVersion = 1;
         await syncRelationalTablesToNeon(sql, initialDump);
@@ -204,13 +204,13 @@ export async function syncFromNeonIfNeeded() {
   try {
     const sql = getSql();
     const versionRows = await sql`
-      SELECT version FROM verdict_state_snapshot WHERE id = 1
+      SELECT version FROM verdict_state_snapshot WHERE id = 2
     `;
     if (versionRows.length === 0) return;
     const remoteVersion = Number(versionRows[0].version || 0);
     if (remoteVersion > localVersion) {
       const fullRows = await sql`
-        SELECT version, payload FROM verdict_state_snapshot WHERE id = 1
+        SELECT version, payload FROM verdict_state_snapshot WHERE id = 2
       `;
       if (fullRows.length > 0) {
         const payload =
@@ -235,7 +235,7 @@ export async function syncToNeon() {
     const payloadStr = JSON.stringify(dump);
     const updatedRows = await sql`
       INSERT INTO verdict_state_snapshot (id, version, payload, updated_at)
-      VALUES (1, 1, ${payloadStr}::jsonb, NOW())
+      VALUES (2, 1, ${payloadStr}::jsonb, NOW())
       ON CONFLICT (id) DO UPDATE SET
         version = verdict_state_snapshot.version + 1,
         payload = EXCLUDED.payload,

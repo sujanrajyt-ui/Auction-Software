@@ -20,6 +20,7 @@ import {
  * Reusable factory to create a new Auction instance from a template or custom configuration
  */
 export function createAuctionInstance({
+  id = null,
   name,
   committeeName,
   currency = 'EUR',
@@ -34,7 +35,8 @@ export function createAuctionInstance({
   createdByUser = null
 }) {
   return runTransaction(() => {
-    const auctionId = uid('auc');
+    const auctionId = id || uid('auc');
+    const isDeterministic = Boolean(id);
     const now = new Date().toISOString();
 
     db.prepare(`
@@ -60,7 +62,7 @@ export function createAuctionInstance({
     // Insert Pools
     const poolNameMap = new Map();
     pools.forEach((p, idx) => {
-      const poolId = uid('pool');
+      const poolId = isDeterministic ? `pool_${auctionId}_${idx + 1}` : uid('pool');
       db.prepare(`
         INSERT INTO pools (id, auctionId, name, defaultBasePrice, isLegendPool, sortOrder, createdAt)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -78,7 +80,7 @@ export function createAuctionInstance({
 
     // Insert Teams with official logos & colours from built-in library
     teams.forEach((t, idx) => {
-      const teamId = uid('team');
+      const teamId = isDeterministic ? `team_${auctionId}_${idx + 1}` : uid('team');
       const libMatch = findBuiltInLogo(t.name) || findBuiltInLogo(t.code);
       const shortName =
         t.shortName ||
@@ -130,7 +132,7 @@ export function createAuctionInstance({
 
     // Insert Items
     items.forEach((item, idx) => {
-      const itemId = uid('item');
+      const itemId = isDeterministic ? `item_${auctionId}_${idx + 1}` : uid('item');
       const poolMatch = poolNameMap.get(String(item.pool || '').toLowerCase());
       const poolName = poolMatch?.name || item.pool || 'General Pool';
       const basePrice =
@@ -218,9 +220,9 @@ export function ensureSeedData({ forceReset = false } = {}) {
   let bidOperatorId;
 
   if (!existingUsers || existingUsers.cnt === 0) {
-    superAdminId = uid('usr');
-    auctioneerId = uid('usr');
-    bidOperatorId = uid('usr');
+    superAdminId = 'usr_superadmin';
+    auctioneerId = 'usr_auctioneer';
+    bidOperatorId = 'usr_operator';
 
     const insertUser = db.prepare(`
       INSERT INTO users (id, email, passwordHash, name, role, active, createdAt)
@@ -267,6 +269,7 @@ export function ensureSeedData({ forceReset = false } = {}) {
     // Primary Football Auction (Section 39)
     const fbTemplate = AUCTION_TEMPLATES.FOOTBALL_DEFAULT;
     const fbAuctionId = createAuctionInstance({
+      id: 'auc_football_2027',
       name: fbTemplate.name,
       committeeName: fbTemplate.committeeName,
       currency: fbTemplate.currency,
@@ -285,13 +288,13 @@ export function ensureSeedData({ forceReset = false } = {}) {
       db.prepare(`
         INSERT OR IGNORE INTO auction_admins (id, auctionId, userId, role, assignedAt)
         VALUES (?, ?, ?, ?, ?)
-      `).run(uid('aa'), fbAuctionId, auctioneerId, ROLES.AUCTIONEER, now);
+      `).run('aa_fb_auctioneer', fbAuctionId, auctioneerId, ROLES.AUCTIONEER, now);
     }
     if (bidOperatorId) {
       db.prepare(`
         INSERT OR IGNORE INTO auction_admins (id, auctionId, userId, role, assignedAt)
         VALUES (?, ?, ?, ?, ?)
-      `).run(uid('aa'), fbAuctionId, bidOperatorId, ROLES.BID_OPERATOR, now);
+      `).run('aa_fb_operator', fbAuctionId, bidOperatorId, ROLES.BID_OPERATOR, now);
     }
 
     const fbTeams = db.prepare('SELECT id, name FROM teams WHERE auctionId = ?').all(fbAuctionId);
@@ -303,14 +306,14 @@ export function ensureSeedData({ forceReset = false } = {}) {
       { teamName: 'Bayern Munich', playerName: 'Joshua Kimmich', amount: 60_000_000 },
       { teamName: 'Chelsea', playerName: 'Enzo Fernández', amount: 55_000_000 }
     ];
-    for (const sr of sampleRetentions) {
+    sampleRetentions.forEach((sr, idx) => {
       const team = fbTeams.find(t => t.name === sr.teamName);
       if (team) {
         db.prepare(`
           INSERT INTO retentions (id, auctionId, teamId, playerName, amount, imageUrl, createdByUserId, createdAt, updatedAt)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
-          uid('ret'),
+          `ret_fb_${idx + 1}`,
           fbAuctionId,
           team.id,
           sr.playerName,
@@ -326,13 +329,14 @@ export function ensureSeedData({ forceReset = false } = {}) {
           sr.playerName
         );
       }
-    }
+    });
     db.prepare('UPDATE auctions SET retentionsPublished = 1 WHERE id = ?').run(fbAuctionId);
     recalculateAllAuctionPurses(fbAuctionId);
 
     // Secondary IPL Mega Auction 2027 instance
     const iplTemplate = AUCTION_TEMPLATES.IPL_2027;
     const iplAuctionId = createAuctionInstance({
+      id: 'auc_ipl_2027',
       name: iplTemplate.name,
       committeeName: iplTemplate.committeeName,
       currency: iplTemplate.currency,
@@ -351,18 +355,19 @@ export function ensureSeedData({ forceReset = false } = {}) {
       db.prepare(`
         INSERT OR IGNORE INTO auction_admins (id, auctionId, userId, role, assignedAt)
         VALUES (?, ?, ?, ?, ?)
-      `).run(uid('aa'), iplAuctionId, auctioneerId, ROLES.AUCTIONEER, now);
+      `).run('aa_ipl_auctioneer', iplAuctionId, auctioneerId, ROLES.AUCTIONEER, now);
     }
     if (bidOperatorId) {
       db.prepare(`
         INSERT OR IGNORE INTO auction_admins (id, auctionId, userId, role, assignedAt)
         VALUES (?, ?, ?, ?, ?)
-      `).run(uid('aa'), iplAuctionId, bidOperatorId, ROLES.BID_OPERATOR, now);
+      `).run('aa_ipl_operator', iplAuctionId, bidOperatorId, ROLES.BID_OPERATOR, now);
     }
 
     // Tertiary Storage Wars Auction instance
     const swTemplate = AUCTION_TEMPLATES.STORAGE_WARS;
     const swAuctionId = createAuctionInstance({
+      id: 'auc_storage_2027',
       name: swTemplate.name,
       committeeName: swTemplate.committeeName,
       currency: swTemplate.currency,
@@ -380,7 +385,7 @@ export function ensureSeedData({ forceReset = false } = {}) {
       db.prepare(`
         INSERT OR IGNORE INTO auction_admins (id, auctionId, userId, role, assignedAt)
         VALUES (?, ?, ?, ?, ?)
-      `).run(uid('aa'), swAuctionId, auctioneerId, ROLES.AUCTIONEER, now);
+      `).run('aa_sw_auctioneer', swAuctionId, auctioneerId, ROLES.AUCTIONEER, now);
     }
   }
 }
