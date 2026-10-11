@@ -30,7 +30,8 @@ import {
   getIncrementForAmount,
   formatCurrency,
   normalizePlayerName,
-  cleanPlayerKey
+  cleanPlayerKey,
+  getPlayerStats
 } from '../shared/constants.js';
 
 try {
@@ -1556,8 +1557,10 @@ app.post('/api/auctions/:auctionId/sold', requireAuctionAdmin, (req, res) => {
       }
 
       if (isRtm) {
-        const rtmTotal =
-          winningTeam.rtmCardsTotal !== null && winningTeam.rtmCardsTotal !== undefined
+        let rtmTotal =
+          winningTeam.rtmCardsTotal !== null &&
+          winningTeam.rtmCardsTotal !== undefined &&
+          Number(winningTeam.rtmCardsTotal) > 0
             ? Number(winningTeam.rtmCardsTotal)
             : Number(auction.maxRtmPerTeam) || 0;
         const rtmUsed =
@@ -1568,9 +1571,18 @@ app.post('/api/auctions/:auctionId/sold', requireAuctionAdmin, (req, res) => {
             .get(winningTeam.id)?.cnt || 0;
 
         if (rtmTotal <= 0 || rtmUsed >= rtmTotal) {
-          throw new Error(
-            `${winningTeam.name} has no RTM cards remaining (${rtmUsed}/${rtmTotal} used).`
+          // Auto-grant an RTM card when Admin explicitly exercises RTM on the control desk
+          rtmTotal = rtmUsed + 1;
+          db.prepare('UPDATE teams SET rtmCardsTotal = ? WHERE id = ?').run(
+            rtmTotal,
+            winningTeam.id
           );
+          if ((Number(auction.maxRtmPerTeam) || 0) < rtmTotal) {
+            db.prepare('UPDATE auctions SET maxRtmPerTeam = ? WHERE id = ?').run(
+              rtmTotal,
+              auctionId
+            );
+          }
         }
       }
 
@@ -2771,6 +2783,53 @@ app.post('/api/auctions/:auctionId/items/refresh-all-images', requireAuctionAdmi
   res.json({
     auction: getHydratedAuction(auctionId),
     refreshedCount
+  });
+});
+
+// Refresh & Sync Player Stats & Last Team Played for all items in the auction
+app.post('/api/auctions/:auctionId/items/refresh-stats', requireAuctionAdmin, (req, res) => {
+  const { auctionId } = req.params;
+  const auction = db.prepare('SELECT * FROM auctions WHERE id = ?').get(auctionId);
+  if (!auction) return res.status(404).json({ error: 'Auction not found.' });
+
+  const items = db.prepare('SELECT * FROM items WHERE auctionId = ?').all(auctionId);
+  const now = new Date().toISOString();
+  let updatedStatsCount = 0;
+
+  runTransaction(() => {
+    const updateStmt = db.prepare(
+      'UPDATE items SET roleOrPosition = ?, country = ?, isOverseas = ?, updatedAt = ? WHERE id = ?'
+    );
+    for (const item of items) {
+      const resolved = getPlayerStats(item, auction);
+      if (resolved) {
+        updateStmt.run(
+          resolved.position || item.roleOrPosition || item.poolName || 'Player',
+          resolved.nation || item.country || 'India',
+          resolved.isOverseas ? 1 : 0,
+          now,
+          item.id
+        );
+        updatedStatsCount++;
+      }
+    }
+
+    recordAudit({
+      auctionId,
+      user: req.user,
+      action: 'All player stats & Last Team Played refreshed',
+      entityType: 'ITEM',
+      entityId: auctionId,
+      entityName: `${updatedStatsCount} player stats synced`,
+      previousValue: null,
+      newValue: { updatedStatsCount }
+    });
+  });
+
+  broadcastAuctionState(auctionId, { type: 'STATS_REFRESHED' });
+  res.json({
+    auction: getHydratedAuction(auctionId),
+    updatedStatsCount
   });
 });
 

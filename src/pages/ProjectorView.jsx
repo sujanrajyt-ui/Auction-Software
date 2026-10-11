@@ -213,6 +213,12 @@ export default function ProjectorView() {
                     className="ml-3 text-4xl lg:text-5xl"
                   />
                 </h1>
+                <PlayerStatsBar
+                  playerName={overlay.itemName}
+                  poolName={overlay.poolName}
+                  auction={auction}
+                  size="lg"
+                />
 
                 <div className="flex items-center justify-center lg:justify-start gap-5 pt-2">
                   <TeamLogo
@@ -276,6 +282,14 @@ export default function ProjectorView() {
                 className="ml-3 text-4xl lg:text-5xl"
               />
             </h1>
+            <div className="max-w-2xl w-full">
+              <PlayerStatsBar
+                playerName={overlay.itemName}
+                poolName={overlay.poolName}
+                auction={auction}
+                size="lg"
+              />
+            </div>
           </div>
         ) : showRetentionBoard ? (
           /* 3. RETENTION BOARD */

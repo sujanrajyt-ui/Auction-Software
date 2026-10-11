@@ -52,7 +52,8 @@ import {
   formatCurrency,
   parseCurrencyInput,
   isIplAuction,
-  getTeamOverseasCount
+  getTeamOverseasCount,
+  getPlayerStats
 } from '../../shared/constants.js';
 import {
   exportAuctionResults,
@@ -146,8 +147,9 @@ export default function CommitteeAdminDashboard() {
   // Audit Filter
   const [auditSearch, setAuditSearch] = useState('');
 
-  // Refresh All Images & Restart Auction Confirmation State
+  // Refresh All Images, Refresh Stats & Restart Auction Confirmation State
   const [refreshingAllImages, setRefreshingAllImages] = useState(false);
+  const [refreshingStats, setRefreshingStats] = useState(false);
   const [restartConfirmText, setRestartConfirmText] = useState('');
 
   useEffect(() => {
@@ -189,6 +191,7 @@ export default function CommitteeAdminDashboard() {
 
   const cur = auction.currency;
   const activeItem = auction.activeItem;
+  const leadingTeam = activeItem?.highestBidderTeam || null;
   const isIpl = isIplAuction(auction);
   const overlay =
     auction.projectorOverlay && auction.projectorOverlay.expiresAt > Date.now()
@@ -495,6 +498,23 @@ export default function CommitteeAdminDashboard() {
       showNotice(err.message, 'error');
     } finally {
       setRefreshingAllImages(false);
+    }
+  };
+
+  const handleRefreshAllStats = async () => {
+    try {
+      setRefreshingStats(true);
+      showNotice('Refreshing IPL & Football player stats and Last Team Played...');
+      const res = await apiFetch(`/api/auctions/${auctionId}/items/refresh-stats`, {
+        method: 'POST'
+      });
+      showNotice(
+        `Refreshed stats & Last Team Played for ${res.updatedStatsCount || 0} players and synced to Projector!`
+      );
+    } catch (err) {
+      showNotice(err.message, 'error');
+    } finally {
+      setRefreshingStats(false);
     }
   };
 
@@ -1293,8 +1313,20 @@ export default function CommitteeAdminDashboard() {
                         className="w-28 h-32 sm:w-32 sm:h-36 rounded-2xl object-cover shrink-0 shadow-xl"
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-extrabold uppercase tracking-wider">
-                          {activeItem.poolName}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-extrabold uppercase tracking-wider">
+                            {activeItem.poolName}
+                          </div>
+                          <button
+                            type="button"
+                            disabled={refreshingStats}
+                            onClick={handleRefreshAllStats}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-indigo-500/20 hover:bg-indigo-500/35 border border-indigo-500/40 text-indigo-300 text-[10px] font-extrabold uppercase tracking-wider cursor-pointer"
+                            title="Refresh IPL & Football Stats + Last Team Played and sync to Projector"
+                          >
+                            <RefreshCw className={`w-3 h-3 ${refreshingStats ? 'animate-spin' : ''}`} />
+                            {refreshingStats ? 'Syncing Stats...' : 'Refresh Stats'}
+                          </button>
                         </div>
                         <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white mt-1.5 leading-tight break-words">
                           {activeItem.name}
@@ -1323,7 +1355,7 @@ export default function CommitteeAdminDashboard() {
                           playerName={activeItem.name}
                           poolName={activeItem.poolName}
                           auction={auction}
-                          size="sm"
+                          size="md"
                         />
                       </div>
                     </div>
@@ -1474,13 +1506,28 @@ export default function CommitteeAdminDashboard() {
                         type="button"
                         disabled={busyAction || auction.status !== AUCTION_STATES.LIVE}
                         onClick={() => {
-                          const eligibleTeams = (auction.teams || []).filter(
-                            t => !t.disabled && (t.rtmRemaining || 0) > 0
+                          const activeTeams = (auction.teams || []).filter(t => !t.disabled);
+                          const playerStats = getPlayerStats(
+                            activeItem.name,
+                            activeItem.poolName,
+                            auction
                           );
+                          const lastTeamHint = (playerStats?.lastTeam || '').toLowerCase();
+                          const matchedLastTeam = lastTeamHint
+                            ? activeTeams.find(
+                                t =>
+                                  (t.shortName || '').toLowerCase() === lastTeamHint ||
+                                  (t.name || '').toLowerCase().includes(lastTeamHint) ||
+                                  lastTeamHint.includes((t.shortName || '').toLowerCase())
+                              )
+                            : null;
+                          const eligibleTeams = activeTeams.filter(t => (t.rtmRemaining || 0) > 0);
                           const defaultTeam =
+                            matchedLastTeam ||
                             eligibleTeams.find(t => t.id !== activeItem.highestBidderTeamId) ||
                             eligibleTeams[0] ||
-                            auction.teams?.[0];
+                            activeTeams.find(t => t.id !== activeItem.highestBidderTeamId) ||
+                            activeTeams[0];
                           setRtmTeamId(defaultTeam?.id || '');
                           setRtmAmountInput(
                             formatCurrency(
@@ -2313,6 +2360,17 @@ export default function CommitteeAdminDashboard() {
                     {refreshingAllImages
                       ? 'Refreshing All Player Images...'
                       : 'Refresh All Player Images'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={refreshingStats || (auction.items?.length || 0) === 0}
+                    onClick={handleRefreshAllStats}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-indigo-500/20 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${refreshingStats ? 'animate-spin' : ''}`} />
+                    {refreshingStats
+                      ? 'Refreshing Stats & Last Team...'
+                      : 'Refresh All Stats & Last Team'}
                   </button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -3714,9 +3772,19 @@ export default function CommitteeAdminDashboard() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-extrabold uppercase">
-                  Right To Match (RTM)
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-extrabold uppercase">
+                    Right To Match (RTM)
+                  </span>
+                  {(() => {
+                    const st = getPlayerStats(activeItem.name, activeItem.poolName, auction);
+                    return st?.lastTeam ? (
+                      <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-extrabold uppercase">
+                        Last Team: {st.lastTeam}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
                 <h3 className="font-display text-lg font-bold text-white mt-1">
                   Exercise RTM Card for {activeItem.name}
                 </h3>
@@ -3730,7 +3798,7 @@ export default function CommitteeAdminDashboard() {
               <strong className="text-white font-mono-num">
                 {formatCurrency(activeItem.currentBid || activeItem.basePrice, cur)}
               </strong>{' '}
-              ({leadingTeam?.name || 'None'}). Select the franchise exercising its RTM card and confirm the final matched amount.
+              ({leadingTeam?.name || 'Opening Bid'}). Select the franchise exercising its RTM card and confirm the final matched amount.
             </p>
             <div>
               <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
@@ -3742,13 +3810,16 @@ export default function CommitteeAdminDashboard() {
                 required
                 className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm text-white"
               >
-                <option value="">Select Team with RTM Card...</option>
+                <option value="">Select Team Exercising RTM...</option>
                 {(auction.teams || [])
-                  .filter(t => !t.disabled && (t.rtmRemaining || 0) > 0)
+                  .filter(t => !t.disabled)
                   .map(t => (
                     <option key={t.id} value={t.id}>
-                      {t.name} (RTM Left: {t.rtmRemaining}/{t.rtmTotal} • Purse:{' '}
-                      {formatCurrency(t.remainingPurse, cur)})
+                      {t.name} (
+                      {(t.rtmRemaining || 0) > 0
+                        ? `RTM Left: ${t.rtmRemaining}/${t.rtmTotal}`
+                        : 'Auto-Grant RTM Card'}{' '}
+                      • Purse: {formatCurrency(t.remainingPurse, cur)})
                     </option>
                   ))}
               </select>

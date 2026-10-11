@@ -379,26 +379,43 @@ export function PlayerStatsBar({ playerName, poolName, auction, size = 'md' }) {
   if (size === 'lg') {
     return (
       <div className="mt-3">
-        <div className="flex flex-wrap items-center gap-2 mb-2">
-          <span className="text-[11px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-slate-800/90 text-amber-300 border border-amber-500/30">
+        <div className="flex flex-wrap items-center gap-2.5 mb-3">
+          <span className="text-xs font-extrabold uppercase tracking-widest px-3.5 py-1 rounded-full bg-slate-800/95 text-amber-300 border border-amber-500/40 shadow">
             {stats.role}
           </span>
           {stats.country && (
-            <span className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-900/90 text-slate-300 border border-slate-700">
+            <span className="text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full bg-slate-900/95 text-slate-200 border border-slate-700 shadow">
               {stats.country}
             </span>
           )}
+          {stats.lastTeam && (
+            <span className="text-xs font-extrabold uppercase tracking-widest px-4 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/50 shadow">
+              LAST TEAM: <strong className="text-white ml-1">{stats.lastTeam}</strong>
+            </span>
+          )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {stats.metrics.map(m => (
             <div
               key={m.label}
-              className="rounded-xl bg-slate-950/90 border border-slate-800/90 px-3 py-2 text-center"
+              className={`rounded-2xl px-4 py-3 text-center border shadow-lg ${
+                m.label === 'LAST TEAM'
+                  ? 'bg-purple-950/50 border-purple-500/50'
+                  : 'bg-slate-950/95 border-slate-800/90'
+              }`}
             >
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <div
+                className={`text-[10px] font-extrabold uppercase tracking-widest ${
+                  m.label === 'LAST TEAM' ? 'text-purple-300' : 'text-slate-400'
+                }`}
+              >
                 {m.label}
               </div>
-              <div className="font-mono-num font-black text-base sm:text-lg text-white mt-0.5">
+              <div
+                className={`font-mono-num font-black text-lg sm:text-xl mt-0.5 truncate ${
+                  m.label === 'LAST TEAM' ? 'text-amber-300' : 'text-white'
+                }`}
+              >
                 {m.value}
               </div>
             </div>
@@ -414,15 +431,22 @@ export function PlayerStatsBar({ playerName, poolName, auction, size = 'md' }) {
         <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700">
           {stats.role}
         </span>
-        {stats.metrics.map(m => (
-          <span
-            key={m.label}
-            className="text-[10px] font-mono-num px-1.5 py-0.5 rounded bg-slate-900/90 text-slate-300 border border-slate-800"
-          >
-            <span className="text-slate-500 mr-1">{m.label}:</span>
-            <span className="font-bold text-white">{m.value}</span>
+        {stats.lastTeam && (
+          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
+            Last: {stats.lastTeam}
           </span>
-        ))}
+        )}
+        {stats.metrics
+          .filter(m => m.label !== 'LAST TEAM')
+          .map(m => (
+            <span
+              key={m.label}
+              className="text-[10px] font-mono-num px-1.5 py-0.5 rounded bg-slate-900/90 text-slate-300 border border-slate-800"
+            >
+              <span className="text-slate-500 mr-1">{m.label}:</span>
+              <span className="font-bold text-white">{m.value}</span>
+            </span>
+          ))}
       </div>
     );
   }
@@ -434,21 +458,34 @@ export function PlayerStatsBar({ playerName, poolName, auction, size = 'md' }) {
           {stats.role}
         </span>
         {stats.country && (
-          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-900 text-slate-400 border border-slate-800">
+          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 border border-slate-800">
             {stats.country}
           </span>
         )}
+        {stats.lastTeam && (
+          <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40">
+            Last Team: <strong className="text-white">{stats.lastTeam}</strong>
+          </span>
+        )}
       </div>
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
         {stats.metrics.map(m => (
           <div
             key={m.label}
-            className="rounded-lg bg-slate-950/90 border border-slate-800 px-2 py-1.5 text-center"
+            className={`rounded-lg border px-2 py-1.5 text-center ${
+              m.label === 'LAST TEAM'
+                ? 'bg-purple-950/40 border-purple-500/40'
+                : 'bg-slate-950/90 border-slate-800'
+            }`}
           >
-            <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+            <div
+              className={`text-[9px] font-bold uppercase tracking-wider ${
+                m.label === 'LAST TEAM' ? 'text-purple-300' : 'text-slate-400'
+              }`}
+            >
               {m.label}
             </div>
-            <div className="font-mono-num font-extrabold text-xs sm:text-sm text-white">
+            <div className="font-mono-num font-extrabold text-xs sm:text-sm text-white truncate">
               {m.value}
             </div>
           </div>
