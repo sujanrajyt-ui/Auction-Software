@@ -254,94 +254,97 @@ export default function TeamDashboard() {
           )}
 
           {activeItem ? (
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
-              <div className="md:col-span-6 flex items-start gap-4">
-                <ItemImage
-                  item={activeItem}
-                  className="w-24 h-28 sm:w-28 sm:h-32 rounded-2xl object-cover shrink-0 shadow-lg"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[11px] font-extrabold uppercase tracking-widest text-amber-400">
-                    CURRENT ITEM • {activeItem.poolName}
-                  </div>
-                  <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white mt-1 leading-tight">
-                    {activeItem.name.toUpperCase()}
-                    <OverseasPlane
-                      playerName={activeItem.name}
-                      auction={auction}
-                      className="ml-2 text-xl"
-                    />
-                  </h2>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                    <span>
-                      Base Price:{' '}
-                      <strong className="font-mono-num text-white">
-                        {formatCurrency(activeItem.basePrice, cur)}
-                      </strong>
-                    </span>
-                    <span>•</span>
-                    <span>
-                      Bid Increment:{' '}
-                      <strong className="font-mono-num text-amber-400">
-                        +{formatCurrency(activeItem.currentIncrement, cur)}
-                      </strong>
-                    </span>
-                  </div>
-                  <PlayerStatsBar
-                    playerName={activeItem.name}
-                    poolName={activeItem.poolName}
-                    auction={auction}
-                    size="sm"
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-5 items-center">
+                <div className="md:col-span-6 flex items-center gap-3.5 sm:gap-4">
+                  <ItemImage
+                    item={activeItem}
+                    className="w-20 h-24 sm:w-28 sm:h-32 rounded-2xl object-cover shrink-0 shadow-lg border border-slate-700"
                   />
-                </div>
-              </div>
-
-              <div className="md:col-span-6 grid grid-cols-2 gap-3">
-                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                  <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                    CURRENT BID
-                  </div>
-                  <div className="font-mono-num text-2xl sm:text-3xl font-extrabold text-amber-400 mt-1">
-                    {activeItem.currentBid > 0
-                      ? formatCurrency(activeItem.currentBid, cur)
-                      : formatCurrency(activeItem.basePrice, cur)}
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-1">
-                    {activeItem.currentBid > 0
-                      ? `Next Bid: ${formatCurrency(activeItem.nextBidAmount, cur)}`
-                      : 'Awaiting Opening Bid'}
-                  </div>
-                </div>
-
-                <div
-                  className={`p-4 rounded-2xl border flex flex-col justify-between ${
-                    isMyTeamLeading
-                      ? 'bg-emerald-950/50 border-emerald-400'
-                      : 'bg-slate-950 border-slate-800'
-                  }`}
-                >
-                  <div className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                    HIGHEST BIDDER
-                  </div>
-                  {activeItem.highestBidderTeam ? (
-                    <div className="flex items-center gap-2.5 mt-1.5">
-                      <TeamLogo team={activeItem.highestBidderTeam} size="sm" />
-                      <div className="min-w-0">
-                        <div className="font-display font-extrabold text-sm sm:text-base text-white truncate">
-                          {activeItem.highestBidderTeam.name}
-                        </div>
-                        {isMyTeamLeading && (
-                          <span className="text-[10px] font-extrabold uppercase text-emerald-400">
-                            ★ YOUR TEAM IS LEADING
-                          </span>
-                        )}
-                      </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest text-amber-400">
+                      CURRENT ITEM • {activeItem.poolName}
                     </div>
-                  ) : (
-                    <div className="text-xs font-bold text-slate-500 mt-2">No Bidder Yet</div>
-                  )}
+                    <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white mt-0.5 leading-tight break-words">
+                      {activeItem.name.toUpperCase()}
+                      <OverseasPlane
+                        playerName={activeItem.name}
+                        auction={auction}
+                        className="ml-1.5 sm:ml-2 text-lg sm:text-xl"
+                      />
+                    </h2>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-400">
+                      <span>
+                        Base Price:{' '}
+                        <strong className="font-mono-num text-white">
+                          {formatCurrency(activeItem.basePrice, cur)}
+                        </strong>
+                      </span>
+                      <span>•</span>
+                      <span>
+                        Increment:{' '}
+                        <strong className="font-mono-num text-amber-400">
+                          +{formatCurrency(activeItem.currentIncrement, cur)}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:col-span-6 grid grid-cols-2 gap-3">
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                    <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                      CURRENT BID
+                    </div>
+                    <div className="font-mono-num text-2xl sm:text-3xl font-extrabold text-amber-400 mt-1">
+                      {activeItem.currentBid > 0
+                        ? formatCurrency(activeItem.currentBid, cur)
+                        : formatCurrency(activeItem.basePrice, cur)}
+                    </div>
+                    <div className="text-[10px] sm:text-[11px] text-slate-400 mt-1">
+                      {activeItem.currentBid > 0
+                        ? `Next: ${formatCurrency(activeItem.nextBidAmount, cur)}`
+                        : 'Awaiting Opening Bid'}
+                    </div>
+                  </div>
+
+                  <div
+                    className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col justify-between ${
+                      isMyTeamLeading
+                        ? 'bg-emerald-950/50 border-emerald-400'
+                        : 'bg-slate-950 border-slate-800'
+                    }`}
+                  >
+                    <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                      HIGHEST BIDDER
+                    </div>
+                    {activeItem.highestBidderTeam ? (
+                      <div className="flex items-center gap-2 sm:gap-2.5 mt-1.5">
+                        <TeamLogo team={activeItem.highestBidderTeam} size="sm" />
+                        <div className="min-w-0">
+                          <div className="font-display font-extrabold text-sm sm:text-base text-white truncate">
+                            {activeItem.highestBidderTeam.name}
+                          </div>
+                          {isMyTeamLeading && (
+                            <span className="text-[10px] font-extrabold uppercase text-emerald-400">
+                              ★ YOUR TEAM LEADS
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs font-bold text-slate-500 mt-2">No Bidder Yet</div>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              <PlayerStatsBar
+                playerName={activeItem.name}
+                poolName={activeItem.poolName}
+                auction={auction}
+                size="md"
+              />
             </div>
           ) : (
             <div className="py-6 text-center">

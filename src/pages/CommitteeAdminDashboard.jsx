@@ -804,6 +804,45 @@ export default function CommitteeAdminDashboard() {
     }
   };
 
+  const handleUpdateTeamRtm = async (team, newRtmTotal) => {
+    const safeCount = Math.max(0, Math.min(15, Number(newRtmTotal) || 0));
+    try {
+      await apiFetch(`/api/auctions/${auctionId}/teams/${team.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          rtmCardsTotal: safeCount
+        })
+      });
+      showNotice(`${team.shortName || team.name} RTM cards set to ${safeCount}.`);
+    } catch (err) {
+      showNotice(err.message, 'error');
+    }
+  };
+
+  const handleAutoCalculateTeamRtms = async () => {
+    try {
+      setBusyAction(true);
+      const maxTotal = Math.max(1, Number(auction.maxRetentionsPerTeam) || 6);
+      for (const team of auction.teams || []) {
+        const retained = Number(team.retentionsCount) || 0;
+        const calcRtm = Math.max(0, maxTotal - retained);
+        await apiFetch(`/api/auctions/${auctionId}/teams/${team.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({
+            rtmCardsTotal: calcRtm
+          })
+        });
+      }
+      showNotice(
+        `Auto-calculated individual RTM cards for each team (${maxTotal} minus retained players)!`
+      );
+    } catch (err) {
+      showNotice(err.message, 'error');
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
   const handleDeleteRetention = async retentionId => {
     try {
       await apiFetch(`/api/auctions/${auctionId}/retentions/${retentionId}`, {
@@ -1336,7 +1375,7 @@ export default function CommitteeAdminDashboard() {
                             className="ml-2 text-xl"
                           />
                         </h2>
-                        <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-400">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-400">
                           <span>
                             BASE PRICE:{' '}
                             <strong className="font-mono-num text-white">
@@ -1351,12 +1390,6 @@ export default function CommitteeAdminDashboard() {
                             </strong>
                           </span>
                         </div>
-                        <PlayerStatsBar
-                          playerName={activeItem.name}
-                          poolName={activeItem.poolName}
-                          auction={auction}
-                          size="md"
-                        />
                       </div>
                     </div>
 
@@ -1424,6 +1457,14 @@ export default function CommitteeAdminDashboard() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Full-width Broadcast Career Stats & Last Team Bar */}
+                  <PlayerStatsBar
+                    playerName={activeItem.name}
+                    poolName={activeItem.poolName}
+                    auction={auction}
+                    size="md"
+                  />
 
                   {/* Primary Action Controls Bar */}
                   <div className="mt-6 pt-5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
@@ -2638,54 +2679,125 @@ export default function CommitteeAdminDashboard() {
             </div>
 
             {/* Admin RTM Cards per Team & Max Retentions Configuration */}
-            <form
-              onSubmit={handleSaveRtmConfig}
-              className="rounded-3xl bg-slate-900/90 border border-purple-500/30 p-5 flex flex-wrap items-end justify-between gap-4"
-            >
-              <div>
-                <h4 className="font-display text-sm font-extrabold text-white">
-                  RTM (Right To Match) & Retention Limits per Team
-                </h4>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Set how many RTM cards and retentions each team gets in IPL / custom auctions. You can also override RTM count per individual team in the Teams tab.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-end gap-3">
+            <div className="rounded-3xl bg-slate-900/90 border border-purple-500/30 p-5 space-y-4">
+              <form
+                onSubmit={handleSaveRtmConfig}
+                className="flex flex-wrap items-end justify-between gap-4 pb-4 border-b border-slate-800/80"
+              >
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-purple-300 mb-1">
-                    RTM Cards per Team
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={maxRtmConfigInput}
-                    onChange={e => setMaxRtmConfigInput(e.target.value)}
-                    className="w-32 rounded-xl bg-slate-950 border border-purple-500/40 px-3 py-2 text-sm font-mono-num text-white"
-                  />
+                  <h4 className="font-display text-sm font-extrabold text-white">
+                    RTM (Right To Match) & Retention Limits — Global & Individual Per-Team Setup
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Set a default RTM limit for all teams, click <strong>Auto-Set IPL RTMs</strong> (Max − Retained), or edit each team's individual RTM count below!
+                  </p>
                 </div>
+                <div className="flex flex-wrap items-end gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase text-purple-300 mb-1">
+                      Default RTM / Team
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="15"
+                      value={maxRtmConfigInput}
+                      onChange={e => setMaxRtmConfigInput(e.target.value)}
+                      className="w-28 rounded-xl bg-slate-950 border border-purple-500/40 px-3 py-2 text-sm font-mono-num text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase text-slate-300 mb-1">
+                      Max Retentions / Team
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="25"
+                      value={maxRetConfigInput}
+                      onChange={e => setMaxRetConfigInput(e.target.value)}
+                      className="w-32 rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm font-mono-num text-white"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={busyAction}
+                    className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs uppercase tracking-wider cursor-pointer"
+                  >
+                    Apply to All Teams
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyAction}
+                    onClick={handleAutoCalculateTeamRtms}
+                    className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/35 border border-amber-500/40 text-amber-300 font-extrabold text-xs uppercase tracking-wider cursor-pointer"
+                    title="Sets each team's RTM cards to (Max Retentions minus Retained Players)"
+                  >
+                    ⚡ Auto-Set IPL RTMs (Max − Retained)
+                  </button>
+                </div>
+              </form>
+
+              {/* Individual Per-Team Editable RTM Cards Strip */}
+              {(auction.teams?.length || 0) > 0 && (
                 <div>
-                  <label className="block text-[11px] font-bold uppercase text-slate-300 mb-1">
-                    Max Retentions per Team
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="25"
-                    value={maxRetConfigInput}
-                    onChange={e => setMaxRetConfigInput(e.target.value)}
-                    className="w-36 rounded-xl bg-slate-950 border border-slate-800 px-3 py-2 text-sm font-mono-num text-white"
-                  />
+                  <div className="text-[11px] font-extrabold uppercase tracking-wider text-purple-300 mb-2.5">
+                    Individual Team RTM Cards (Set a different RTM count for each team):
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
+                    {(auction.teams || []).map(team => (
+                      <div
+                        key={team.id}
+                        className="p-2.5 rounded-2xl bg-slate-950/90 border border-slate-800 flex items-center justify-between gap-2"
+                        style={{ borderLeftWidth: '4px', borderLeftColor: team.primaryColor }}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <TeamLogo team={team} size="xs" />
+                          <div className="min-w-0">
+                            <div className="text-xs font-extrabold text-white truncate">
+                              {team.shortName || team.name}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              Ret: {team.retentionsCount} • Left:{' '}
+                              <strong className="text-purple-300">{team.rtmRemaining}</strong>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUpdateTeamRtm(team, Math.max(0, (team.rtmTotal || 0) - 1))
+                            }
+                            className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer"
+                            title="Decrease RTM Cards"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            max="15"
+                            value={team.rtmTotal ?? 0}
+                            onChange={e => handleUpdateTeamRtm(team, e.target.value)}
+                            className="w-10 h-6 rounded-lg bg-purple-950/60 border border-purple-500/40 text-center font-mono-num font-extrabold text-xs text-purple-200 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateTeamRtm(team, (team.rtmTotal || 0) + 1)}
+                            className="w-6 h-6 rounded-lg bg-purple-600/40 hover:bg-purple-600 text-white font-bold text-xs flex items-center justify-center cursor-pointer"
+                            title="Increase RTM Cards"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  type="submit"
-                  disabled={busyAction}
-                  className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs uppercase tracking-wider cursor-pointer"
-                >
-                  Apply to All Teams
-                </button>
-              </div>
-            </form>
+              )}
+            </div>
 
             {/* Manual Team-by-Team Retention Entry (Allowed only before LIVE) */}
             {!isRetentionsLocked && (
@@ -2782,7 +2894,7 @@ export default function CommitteeAdminDashboard() {
                     </div>
                     <p className="text-xs text-slate-400 mt-1">
                       Drag any player chip below and drop it onto a franchise card, or click{' '}
-                      <span className="text-amber-300 font-bold">Retain & Set Price</span> to assign them immediately.
+                      <span className="text-amber-300 font-bold">Set Price</span> to choose a team & price immediately.
                     </p>
                   </div>
                   <div className="relative w-full sm:w-72">
@@ -2922,15 +3034,36 @@ export default function CommitteeAdminDashboard() {
                             <div className="font-display font-bold text-white text-sm">
                               {team.name}
                             </div>
-                            <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                            <div className="text-[11px] text-slate-400 flex flex-wrap items-center gap-2 mt-0.5">
                               <span>
                                 Retained: {team.retentionsCount} / {auction.maxRetentionsPerTeam}
                               </span>
-                              {(team.rtmTotal > 0 || (auction.maxRtmPerTeam || 0) > 0) && (
-                                <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px]">
-                                  RTM: {team.rtmRemaining}/{team.rtmTotal}
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/35 text-purple-300 font-bold text-[10px]">
+                                <span>RTM: {team.rtmRemaining}/</span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateTeamRtm(team, Math.max(0, (team.rtmTotal || 0) - 1))
+                                  }
+                                  className="w-4 h-4 rounded bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer"
+                                  title="Decrease team RTM cards"
+                                >
+                                  −
+                                </button>
+                                <span className="font-mono-num text-white px-0.5">
+                                  {team.rtmTotal ?? 0}
                                 </span>
-                              )}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateTeamRtm(team, (team.rtmTotal || 0) + 1)
+                                  }
+                                  className="w-4 h-4 rounded bg-purple-600/50 hover:bg-purple-500 text-white flex items-center justify-center cursor-pointer"
+                                  title="Increase team RTM cards"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -3063,7 +3196,7 @@ export default function CommitteeAdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-6 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-7 gap-3">
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
                     Team Name
@@ -3099,6 +3232,20 @@ export default function CommitteeAdminDashboard() {
                     onChange={e => setNewTeamPin(e.target.value)}
                     placeholder="Auto (e.g. 1011)"
                     className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-sm font-mono-num text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-purple-300 mb-1">
+                    RTM Cards
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="15"
+                    value={newTeamRtmCards}
+                    onChange={e => setNewTeamRtmCards(e.target.value)}
+                    placeholder={`Default (${auction.maxRtmPerTeam || 0})`}
+                    className="w-full rounded-xl bg-slate-950 border border-purple-500/40 px-3 py-2 text-sm font-mono-num text-white"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -3144,10 +3291,10 @@ export default function CommitteeAdminDashboard() {
                     <Lock className="w-3 h-3" /> Admin-Only Confidential Directory
                   </div>
                   <h3 className="font-display text-lg font-bold text-white">
-                    All Team Login Details (Team Code + PIN)
+                    All Team Login Details & Per-Team RTM Cards
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Only Admins can view, copy, or reset these login credentials. Share each team's Code & PIN privately with its delegates.
+                    Only Admins can view, copy, or reset these login credentials, and set a different RTM card count for each team.
                   </p>
                 </div>
                 {(auction.teams?.length || 0) > 0 && (
@@ -3182,7 +3329,7 @@ export default function CommitteeAdminDashboard() {
                         <th className="py-2.5 px-3">Team</th>
                         <th className="py-2.5 px-3">Team Code</th>
                         <th className="py-2.5 px-3">Team PIN</th>
-                        <th className="py-2.5 px-3">RTM Cards</th>
+                        <th className="py-2.5 px-3">RTM Cards (Left / Total)</th>
                         <th className="py-2.5 px-3">Status</th>
                         <th className="py-2.5 px-3 text-right">Actions</th>
                       </tr>
@@ -3207,9 +3354,35 @@ export default function CommitteeAdminDashboard() {
                             </span>
                           </td>
                           <td className="py-2.5 px-3">
-                            <span className="font-mono-num font-bold text-xs text-purple-300">
-                              {t.rtmRemaining ?? 0} / {t.rtmTotal ?? 0}
-                            </span>
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-xl bg-slate-950 border border-purple-500/40">
+                              <span className="font-mono-num font-bold text-xs text-purple-300">
+                                Left: {t.rtmRemaining ?? 0} /
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateTeamRtm(t, Math.max(0, (t.rtmTotal || 0) - 1))
+                                }
+                                className="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center cursor-pointer"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                max="15"
+                                value={t.rtmTotal ?? 0}
+                                onChange={e => handleUpdateTeamRtm(t, e.target.value)}
+                                className="w-9 h-5 rounded bg-purple-950/60 border border-purple-500/40 text-center font-mono-num font-extrabold text-xs text-white focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateTeamRtm(t, (t.rtmTotal || 0) + 1)}
+                                className="w-5 h-5 rounded bg-purple-600/50 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center cursor-pointer"
+                              >
+                                +
+                              </button>
+                            </div>
                           </td>
                           <td className="py-2.5 px-3">
                             {t.disabled ? (
@@ -3275,11 +3448,32 @@ export default function CommitteeAdminDashboard() {
                           <h4 className="font-display text-lg font-extrabold text-white">
                             {team.name}
                           </h4>
-                          {(team.rtmTotal > 0 || (auction.maxRtmPerTeam || 0) > 0) && (
-                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-extrabold">
-                              RTM: {team.rtmRemaining}/{team.rtmTotal}
+                          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/35 text-[10px] font-extrabold">
+                            <span>RTM: {team.rtmRemaining}/</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleUpdateTeamRtm(team, Math.max(0, (team.rtmTotal || 0) - 1))
+                              }
+                              className="w-4 h-4 rounded bg-slate-950 hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer"
+                              title="Decrease RTM cards"
+                            >
+                              −
+                            </button>
+                            <span className="font-mono-num text-white px-0.5">
+                              {team.rtmTotal ?? 0}
                             </span>
-                          )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleUpdateTeamRtm(team, (team.rtmTotal || 0) + 1)
+                              }
+                              className="w-4 h-4 rounded bg-purple-600/50 hover:bg-purple-500 text-white flex items-center justify-center cursor-pointer"
+                              title="Increase RTM cards"
+                            >
+                              +
+                            </button>
+                          </div>
                           {team.disabled && (
                             <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[10px] font-bold">
                               DISABLED

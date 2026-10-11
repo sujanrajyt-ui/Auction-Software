@@ -234,6 +234,11 @@ export function initSchema() {
   } catch {
     // Column already exists
   }
+  try {
+    db.exec('ALTER TABLE items ADD COLUMN statsJson TEXT DEFAULT NULL');
+  } catch {
+    // Column already exists
+  }
 
   // Ensure existing IPL auctions default to 2 RTM cards per team if not yet set
   try {
@@ -486,7 +491,21 @@ export function getHydratedAuction(auctionId, options = { includePrivateRetentio
 
   const allItems = db
     .prepare('SELECT * FROM items WHERE auctionId = ? ORDER BY queueOrder ASC, createdAt ASC')
-    .all(auctionId);
+    .all(auctionId)
+    .map(item => {
+      let parsedStats = null;
+      if (item.statsJson) {
+        try {
+          parsedStats = JSON.parse(item.statsJson);
+        } catch {
+          parsedStats = null;
+        }
+      }
+      return {
+        ...item,
+        stats: parsedStats
+      };
+    });
 
   const rawRetentions = db
     .prepare('SELECT * FROM retentions WHERE auctionId = ? ORDER BY createdAt ASC')
@@ -570,6 +589,7 @@ export function getHydratedAuction(auctionId, options = { includePrivateRetentio
       retentionsCount: allTeamRetentionsForMath.length,
       purchasesCount: purchasedItems.length,
       squadCount: allTeamRetentionsForMath.length + purchasedItems.length,
+      rtmCardsTotal: rtmTotal,
       rtmTotal,
       rtmUsed,
       rtmRemaining,

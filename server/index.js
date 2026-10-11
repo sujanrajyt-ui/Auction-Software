@@ -1559,8 +1559,7 @@ app.post('/api/auctions/:auctionId/sold', requireAuctionAdmin, (req, res) => {
       if (isRtm) {
         let rtmTotal =
           winningTeam.rtmCardsTotal !== null &&
-          winningTeam.rtmCardsTotal !== undefined &&
-          Number(winningTeam.rtmCardsTotal) > 0
+          winningTeam.rtmCardsTotal !== undefined
             ? Number(winningTeam.rtmCardsTotal)
             : Number(auction.maxRtmPerTeam) || 0;
         const rtmUsed =
@@ -2691,6 +2690,14 @@ app.patch('/api/auctions/:auctionId/items/:itemId', requireAuctionAdmin, (req, r
 // Section 12: REFRESH ALL PLAYER IMAGES across the entire auction (items + retentions)
 app.post('/api/auctions/:auctionId/items/refresh-all-images', requireAuctionAdmin, async (req, res) => {
   const { auctionId } = req.params;
+  const auction = db.prepare('SELECT * FROM auctions WHERE id = ?').get(auctionId);
+  const sportHint =
+    auction?.currency === 'INR' || String(auction?.name || '').toLowerCase().includes('ipl')
+      ? 'IPL Cricket'
+      : auction?.currency === 'EUR' || String(auction?.name || '').toLowerCase().includes('football')
+      ? 'Football'
+      : '';
+
   const items = db
     .prepare('SELECT * FROM items WHERE auctionId = ? ORDER BY queueOrder ASC')
     .all(auctionId);
@@ -2716,9 +2723,9 @@ app.post('/api/auctions/:auctionId/items/refresh-all-images', requireAuctionAdmi
         try {
           const url = await resolveItemImage({
             name: item.name,
-            pool: item.poolName,
+            pool: `${item.poolName || ''} ${sportHint}`.trim(),
             skipUrl: null,
-            existingUrl: item.imageUrl
+            existingUrl: null
           });
           return { id: item.id, url };
         } catch {
@@ -2747,9 +2754,9 @@ app.post('/api/auctions/:auctionId/items/refresh-all-images', requireAuctionAdmi
         try {
           const url = await resolveItemImage({
             name: ret.playerName,
-            pool: 'RETENTION',
+            pool: `RETENTION ${sportHint}`.trim(),
             skipUrl: null,
-            existingUrl: ret.imageUrl
+            existingUrl: null
           });
           return { id: ret.id, url };
         } catch {
@@ -2788,54 +2795,66 @@ app.post('/api/auctions/:auctionId/items/refresh-all-images', requireAuctionAdmi
 
 // Refresh & Sync Player Stats & Last Team Played for all items in the auction
 app.post('/api/auctions/:auctionId/items/refresh-stats', requireAuctionAdmin, (req, res) => {
-  const { auctionId } = req.params;
-  const auction = db.prepare('SELECT * FROM auctions WHERE id = ?').get(auctionId);
-  if (!auction) return res.status(404).json({ error: 'Auction not found.' });
+  try {
+    const { auctionId } = req.params;
+    const auction = db.prepare('SELECT * FROM auctions WHERE id = ?').get(auctionId);
+    if (!auction) return res.status(404).json({ error: 'Auction not found.' });
 
-  const items = db.prepare('SELECT * FROM items WHERE auctionId = ?').all(auctionId);
-  const now = new Date().toISOString();
-  let updatedStatsCount = 0;
-
-  runTransaction(() => {
-    const updateStmt = db.prepare(
-      'UPDATE items SET roleOrPosition = ?, country = ?, isOverseas = ?, updatedAt = ? WHERE id = ?'
-    );
-    for (const item of items) {
-      const resolved = getPlayerStats(item, auction);
-      if (resolved) {
-        updateStmt.run(
-          resolved.position || item.roleOrPosition || item.poolName || 'Player',
-          resolved.nation || item.country || 'India',
-          resolved.isOverseas ? 1 : 0,
-          now,
-          item.id
-        );
-        updatedStatsCount++;
-      }
+    try {
+      db.exec('ALTER TABLE items ADD COLUMN statsJson TEXT DEFAULT NULL');
+    } catch {
+      // Column already exists
     }
 
-    recordAudit({
-      auctionId,
-      user: req.user,
-      action: 'All player stats & Last Team Played refreshed',
-      entityType: 'ITEM',
-      entityId: auctionId,
-      entityName: `${updatedStatsCount} player stats synced`,
-      previousValue: null,
-      newValue: { updatedStatsCount }
-    });
-  });
+    const items = db.prepare('SELECT * FROM items WHERE auctionId = ?').all(auctionId);
+    const now = new Date().toISOString();
+    let updatedStatsCount = 0;
 
-  broadcastAuctionState(auctionId, { type: 'STATS_REFRESHED' });
-  res.json({
-    auction: getHydratedAuction(auctionId),
-    updatedStatsCount
-  });
+    runTransaction(() => {
+      const updateStmt = db.prepare(
+        'UPDATE items SET statsJson = ?, updatedAt = ? WHERE id = ?'
+      );
+      for (const item of items) {
+        const resolved = getPlayerStats(item, auction);
+        if (resolved) {
+          updateStmt.run(JSON.stringify(resolved), now, item.id);
+          updatedStatsCount++;
+        }
+      }
+
+      recordAudit({
+        auctionId,
+        user: req.user,
+        action: 'All player stats & Last Team Played refreshed',
+        entityType: 'ITEM',
+        entityId: auctionId,
+        entityName: `${updatedStatsCount} player stats synced`,
+        previousValue: null,
+        newValue: { updatedStatsCount }
+      });
+    });
+
+    broadcastAuctionState(auctionId, { type: 'STATS_REFRESHED' });
+    res.json({
+      auction: getHydratedAuction(auctionId),
+      updatedStatsCount
+    });
+  } catch (err) {
+    return res.status(400).json({ error: err.message || 'Failed to refresh player stats.' });
+  }
 });
 
 // Section 12: REFRESH IMAGE button for manual image re-search
 app.post('/api/auctions/:auctionId/items/:itemId/refresh-image', requireAuctionAdmin, async (req, res) => {
   const { auctionId, itemId } = req.params;
+  const auction = db.prepare('SELECT * FROM auctions WHERE id = ?').get(auctionId);
+  const sportHint =
+    auction?.currency === 'INR' || String(auction?.name || '').toLowerCase().includes('ipl')
+      ? 'IPL Cricket'
+      : auction?.currency === 'EUR' || String(auction?.name || '').toLowerCase().includes('football')
+      ? 'Football'
+      : '';
+
   const item = db
     .prepare('SELECT * FROM items WHERE id = ? AND auctionId = ?')
     .get(itemId, auctionId);
@@ -2844,9 +2863,9 @@ app.post('/api/auctions/:auctionId/items/:itemId/refresh-image', requireAuctionA
 
   const newImageUrl = await resolveItemImage({
     name: item.name,
-    pool: item.poolName,
+    pool: `${item.poolName || ''} ${sportHint}`.trim(),
     skipUrl: null,
-    existingUrl: item.imageUrl
+    existingUrl: null
   });
 
   const now = new Date().toISOString();

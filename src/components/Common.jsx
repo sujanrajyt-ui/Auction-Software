@@ -378,42 +378,54 @@ export function PlayerStatsBar({ playerName, poolName, auction, size = 'md' }) {
 
   if (size === 'lg') {
     return (
-      <div className="mt-3">
-        <div className="flex flex-wrap items-center gap-2.5 mb-3">
-          <span className="text-xs font-extrabold uppercase tracking-widest px-3.5 py-1 rounded-full bg-slate-800/95 text-amber-300 border border-amber-500/40 shadow">
-            {stats.role}
-          </span>
-          {stats.country && (
-            <span className="text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full bg-slate-900/95 text-slate-200 border border-slate-700 shadow">
-              {stats.country}
+      <div className="mt-4 rounded-3xl bg-gradient-to-br from-slate-900/95 via-slate-950/95 to-slate-900/95 border border-slate-700/80 p-4 sm:p-5 shadow-2xl">
+        {/* Top Metadata & Last Team Header Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3.5 mb-3.5 border-b border-slate-800/90">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-extrabold uppercase tracking-[0.18em] px-3.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/40 shadow-sm">
+              {stats.role}
             </span>
-          )}
+            {stats.country && (
+              <span className="text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full bg-slate-800/90 text-slate-200 border border-slate-700">
+                {stats.country}
+              </span>
+            )}
+          </div>
+
           {stats.lastTeam && (
-            <span className="text-xs font-extrabold uppercase tracking-widest px-4 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-400/50 shadow">
-              LAST TEAM: <strong className="text-white ml-1">{stats.lastTeam}</strong>
-            </span>
+            <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-gradient-to-r from-purple-500/25 via-indigo-500/20 to-purple-500/25 border border-purple-400/50 shadow-md">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-purple-300">
+                LAST TEAM
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+              <span className="font-display font-black text-sm sm:text-base uppercase tracking-wider text-white">
+                {stats.lastTeam}
+              </span>
+            </div>
           )}
         </div>
+
+        {/* 4-Column Broadcast Career Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {stats.metrics.map(m => (
             <div
               key={m.label}
-              className={`rounded-2xl px-4 py-3 text-center border shadow-lg ${
-                m.label === 'LAST TEAM'
-                  ? 'bg-purple-950/50 border-purple-500/50'
-                  : 'bg-slate-950/95 border-slate-800/90'
+              className={`relative overflow-hidden rounded-2xl px-4 py-3 text-center border transition ${
+                m.highlight
+                  ? 'bg-gradient-to-b from-amber-500/12 to-slate-950/95 border-amber-500/40 shadow-lg'
+                  : 'bg-slate-950/90 border-slate-800/90'
               }`}
             >
               <div
-                className={`text-[10px] font-extrabold uppercase tracking-widest ${
-                  m.label === 'LAST TEAM' ? 'text-purple-300' : 'text-slate-400'
+                className={`text-[10px] font-extrabold uppercase tracking-[0.2em] ${
+                  m.highlight ? 'text-amber-300' : 'text-slate-400'
                 }`}
               >
                 {m.label}
               </div>
               <div
-                className={`font-mono-num font-black text-lg sm:text-xl mt-0.5 truncate ${
-                  m.label === 'LAST TEAM' ? 'text-amber-300' : 'text-white'
+                className={`font-mono-num font-black text-2xl sm:text-3xl mt-1 tracking-tight ${
+                  m.highlight ? 'text-amber-400' : 'text-white'
                 }`}
               >
                 {m.value}
@@ -428,64 +440,69 @@ export function PlayerStatsBar({ playerName, poolName, auction, size = 'md' }) {
   if (size === 'sm') {
     return (
       <div className="flex flex-wrap items-center gap-1.5 mt-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 border border-slate-700">
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30">
           {stats.role}
         </span>
         {stats.lastTeam && (
-          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
-            Last: {stats.lastTeam}
+          <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-200 border border-purple-500/40">
+            Last: <strong className="text-white">{stats.lastTeam}</strong>
           </span>
         )}
-        {stats.metrics
-          .filter(m => m.label !== 'LAST TEAM')
-          .map(m => (
-            <span
-              key={m.label}
-              className="text-[10px] font-mono-num px-1.5 py-0.5 rounded bg-slate-900/90 text-slate-300 border border-slate-800"
-            >
-              <span className="text-slate-500 mr-1">{m.label}:</span>
-              <span className="font-bold text-white">{m.value}</span>
-            </span>
-          ))}
+        {stats.metrics.map(m => (
+          <span
+            key={m.label}
+            className="text-[10px] font-mono-num px-2 py-0.5 rounded-md bg-slate-900/90 text-slate-300 border border-slate-800"
+          >
+            <span className="text-slate-500 mr-1">{m.label}:</span>
+            <span className="font-bold text-white">{m.value}</span>
+          </span>
+        ))}
       </div>
     );
   }
 
   return (
-    <div className="mt-2">
-      <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-800 text-amber-300 border border-amber-500/30">
-          {stats.role}
-        </span>
-        {stats.country && (
-          <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 border border-slate-800">
-            {stats.country}
+    <div className="mt-2.5 rounded-2xl bg-slate-950/80 border border-slate-800/90 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 pb-2 mb-2 border-b border-slate-800/80">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            {stats.role}
           </span>
-        )}
+          {stats.country && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-800">
+              {stats.country}
+            </span>
+          )}
+        </div>
         {stats.lastTeam && (
-          <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40">
-            Last Team: <strong className="text-white">{stats.lastTeam}</strong>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
+            <span>LAST TEAM:</span>
+            <strong className="text-white">{stats.lastTeam}</strong>
           </span>
         )}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {stats.metrics.map(m => (
           <div
             key={m.label}
-            className={`rounded-lg border px-2 py-1.5 text-center ${
-              m.label === 'LAST TEAM'
-                ? 'bg-purple-950/40 border-purple-500/40'
-                : 'bg-slate-950/90 border-slate-800'
+            className={`rounded-xl border px-2.5 py-1.5 text-center ${
+              m.highlight
+                ? 'bg-amber-500/10 border-amber-500/30'
+                : 'bg-slate-900/90 border-slate-800/90'
             }`}
           >
             <div
-              className={`text-[9px] font-bold uppercase tracking-wider ${
-                m.label === 'LAST TEAM' ? 'text-purple-300' : 'text-slate-400'
+              className={`text-[9px] font-extrabold uppercase tracking-wider ${
+                m.highlight ? 'text-amber-300' : 'text-slate-400'
               }`}
             >
               {m.label}
             </div>
-            <div className="font-mono-num font-extrabold text-xs sm:text-sm text-white truncate">
+            <div
+              className={`font-mono-num font-black text-sm sm:text-base mt-0.5 ${
+                m.highlight ? 'text-amber-400' : 'text-white'
+              }`}
+            >
               {m.value}
             </div>
           </div>

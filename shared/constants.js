@@ -957,27 +957,29 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
   if (fbMatch) {
     const s = fbMatch;
     const lastTeam = itemObj?.lastTeam || s.lastTeam || 'European Club';
+    const totalGA = (Number(s.goals) || 0) + (Number(s.assists) || 0);
+    const csRatio = `${Math.round(((Number(s.cleanSheets) || 0) / Math.max(1, Number(s.apps) || 1)) * 100)}%`;
     return {
       sport: 'FOOTBALL',
-      role: `${s.pos} • OVR ${s.ovr}`,
+      role: s.pos,
       country: s.nation,
       lastTeam,
-      badge: `OVR ${s.ovr}`,
+      badge: s.pos,
       position: s.pos,
       nation: s.nation,
       isOverseas: false,
       metrics: s.isGK
         ? [
-            { label: 'LAST TEAM', value: lastTeam },
-            { label: 'APPS', value: String(s.apps) },
-            { label: 'CLEAN SHEETS', value: String(s.cleanSheets) },
-            { label: 'SAVE %', value: s.savePct }
+            { label: 'MATCHES', value: String(s.apps) },
+            { label: 'CLEAN SHEETS', value: String(s.cleanSheets), highlight: true },
+            { label: 'SAVE RATE', value: s.savePct },
+            { label: 'CS RATIO', value: csRatio }
           ]
         : [
-            { label: 'LAST TEAM', value: lastTeam },
-            { label: 'APPS', value: String(s.apps) },
-            { label: 'GOALS', value: String(s.goals) },
-            { label: 'ASSISTS', value: String(s.assists) }
+            { label: 'MATCHES', value: String(s.apps) },
+            { label: 'GOALS', value: String(s.goals), highlight: true },
+            { label: 'ASSISTS', value: String(s.assists) },
+            { label: 'GOAL CONTRIB.', value: String(totalGA) }
           ]
     };
   }
@@ -992,6 +994,50 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
     const s = iplMatch;
     const overseas = isOverseasPlayer(itemObj || displayName);
     const lastTeam = itemObj?.lastTeam || s.lastTeam || 'IPL Franchise';
+
+    const primaryStr = String(s.primary || '');
+    const avgOrEconStr = String(s.avgOrEcon || '');
+    const srOrBestStr = String(s.srOrBest || '');
+
+    const firstPart = str => str.split('•')[0].trim();
+    const extractNum = str => str.replace(/^(Avg|Econ|SR|Best)\s*/i, '').trim();
+
+    let metrics = [];
+    if (primaryStr.includes('Wkts')) {
+      // Pure Bowler
+      const wkts = primaryStr.replace(/Wkts/i, '').trim();
+      const econ = extractNum(firstPart(avgOrEconStr));
+      const sr = extractNum(firstPart(srOrBestStr));
+      metrics = [
+        { label: 'MATCHES', value: String(s.matches) },
+        { label: 'WICKETS', value: wkts, highlight: true },
+        { label: 'ECONOMY', value: econ },
+        { label: 'BOWL SR', value: sr }
+      ];
+    } else if (avgOrEconStr.includes('Wkts')) {
+      // All-Rounder with Runs + Wickets
+      const runs = primaryStr.replace(/Runs/i, '').trim();
+      const wkts = firstPart(avgOrEconStr).replace(/Wkts/i, '').trim();
+      const sr = extractNum(firstPart(srOrBestStr));
+      metrics = [
+        { label: 'MATCHES', value: String(s.matches) },
+        { label: 'RUNS', value: runs, highlight: true },
+        { label: 'WICKETS', value: wkts, highlight: true },
+        { label: 'STRIKE RATE', value: sr }
+      ];
+    } else {
+      // Batsman / Wicket-Keeper
+      const runs = primaryStr.replace(/Runs/i, '').trim();
+      const avg = extractNum(firstPart(avgOrEconStr));
+      const sr = extractNum(firstPart(srOrBestStr));
+      metrics = [
+        { label: 'MATCHES', value: String(s.matches) },
+        { label: 'RUNS', value: runs, highlight: true },
+        { label: 'AVERAGE', value: avg },
+        { label: 'STRIKE RATE', value: sr }
+      ];
+    }
+
     return {
       sport: 'IPL',
       role: s.role,
@@ -1001,12 +1047,7 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
       position: s.role,
       nation: s.nation,
       isOverseas: overseas,
-      metrics: [
-        { label: 'LAST TEAM', value: lastTeam },
-        { label: 'MATCHES', value: String(s.matches) },
-        { label: 'CAREER', value: s.primary },
-        { label: 'AVG / SR', value: `${s.avgOrEcon} • ${s.srOrBest.split('•')[0].trim()}` }
-      ]
+      metrics
     };
   }
 
@@ -1042,16 +1083,16 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
         nation: country,
         isOverseas: overseas,
         metrics: [
-          { label: 'LAST TEAM', value: lastTeam },
           { label: 'MATCHES', value: String(matches) },
-          { label: 'WICKETS', value: `${wickets} Wkts` },
-          { label: 'ECON / SR', value: `Econ ${econ} • SR ${sr}` }
+          { label: 'WICKETS', value: String(wickets), highlight: true },
+          { label: 'ECONOMY', value: econ },
+          { label: 'BOWL SR', value: sr }
         ]
       };
     }
 
     const runs = matches * (22 + (seed % 14));
-    const avg = (26.5 + ((seed % 160) / 10)).toFixed(2);
+    const avg = (26.5 + ((seed % 160) / 10)).toFixed(1);
     const sr = (132.0 + ((seed % 280) / 10)).toFixed(1);
     return {
       sport: 'IPL',
@@ -1063,10 +1104,10 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
       nation: country,
       isOverseas: overseas,
       metrics: [
-        { label: 'LAST TEAM', value: lastTeam },
         { label: 'MATCHES', value: String(matches) },
-        { label: 'CAREER', value: `${runs.toLocaleString()} Runs` },
-        { label: 'AVG / SR', value: `Avg ${avg} • SR ${sr}` }
+        { label: 'RUNS', value: runs.toLocaleString(), highlight: true },
+        { label: 'AVERAGE', value: avg },
+        { label: 'STRIKE RATE', value: sr }
       ]
     };
   }
@@ -1085,7 +1126,6 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
       'Inter Milan'
     ];
     const lastTeam = itemObj?.lastTeam || clubs[seed % clubs.length];
-    const ovr = 83 + (seed % 9);
     const pos = itemObj?.roleOrPosition || poolName || 'Forward / Midfielder';
     const nation = itemObj?.country || 'Europe / Global';
     const apps = 140 + (seed % 220);
@@ -1093,18 +1133,18 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
     const assists = 18 + (seed % 75);
     return {
       sport: 'FOOTBALL',
-      role: `${pos} • OVR ${ovr}`,
+      role: pos,
       country: nation,
       lastTeam,
-      badge: `OVR ${ovr}`,
+      badge: pos,
       position: pos,
       nation,
       isOverseas: false,
       metrics: [
-        { label: 'LAST TEAM', value: lastTeam },
-        { label: 'APPS', value: String(apps) },
-        { label: 'GOALS', value: String(goals) },
-        { label: 'ASSISTS', value: String(assists) }
+        { label: 'MATCHES', value: String(apps) },
+        { label: 'GOALS', value: String(goals), highlight: true },
+        { label: 'ASSISTS', value: String(assists) },
+        { label: 'GOAL CONTRIB.', value: String(goals + assists) }
       ]
     };
   }

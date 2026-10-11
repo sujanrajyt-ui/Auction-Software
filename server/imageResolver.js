@@ -3,7 +3,9 @@ import {
   BUILTIN_LOGOS,
   findBuiltInLogo,
   generateCrestSvgDataUri,
-  generateItemSvgDataUri
+  generateItemSvgDataUri,
+  IPL_PLAYER_STATS,
+  FOOTBALL_PLAYER_STATS
 } from '../shared/constants.js';
 
 try {
@@ -55,7 +57,14 @@ function isSuitableImageUrl(url) {
     lower.includes('commons-logo') ||
     lower.includes('default_') ||
     lower.includes('no_image') ||
-    lower.includes('replace_this_image')
+    lower.includes('replace_this_image') ||
+    lower.includes('cricket_ball') ||
+    lower.includes('cricket_bat') ||
+    lower.includes('pictogram') ||
+    lower.includes('autograph') ||
+    lower.includes('signature') ||
+    lower.endsWith('.svg') ||
+    lower.includes('.svg.png')
   ) {
     return false;
   }
@@ -83,6 +92,7 @@ function sanitizeSearchName(raw) {
 }
 
 const WIKI_PAGE_OVERRIDES = {
+  // Footballers
   'rodri': 'Rodri_(footballer,_born_1996)',
   'pedri': 'Pedri',
   'endrick': 'Endrick_(footballer,_born_2006)',
@@ -98,8 +108,113 @@ const WIKI_PAGE_OVERRIDES = {
   'lautaro martínez': 'Lautaro_Martínez',
   'andrés iniesta': 'Andrés_Iniesta',
   'xavi hernández': 'Xavi_(footballer,_born_1980)',
-  'martin ødegaard': 'Martin_Ødegaard'
+  'martin ødegaard': 'Martin_Ødegaard',
+  // Cricketers with common name collisions
+  'abhishek sharma': 'Abhishek_Sharma_(cricketer,_born_2000)',
+  'mohsin khan': 'Mohsin_Khan_(Indian_cricketer)',
+  'mukesh kumar': 'Mukesh_Kumar_(cricketer)',
+  'sandeep sharma': 'Sandeep_Sharma_(cricketer)',
+  'david miller': 'David_Miller_(South_African_cricketer)',
+  'cameron green': 'Cameron_Green_(cricketer)',
+  'daryl mitchell': 'Daryl_Mitchell_(cricketer)',
+  'glenn phillips': 'Glenn_Phillips_(cricketer)',
+  'spencer johnson': 'Spencer_Johnson_(cricketer)',
+  'varun chakravarthy': 'Varun_Chakaravarthy',
+  't natarajan': 'T._Natarajan',
+  'kl rahul': 'KL_Rahul',
+  'ms dhoni': 'MS_Dhoni',
+  'will jacks': 'Will_Jacks',
+  'phil salt': 'Phil_Salt',
+  'nitish kumar reddy': 'Nitish_Kumar_Reddy',
+  'harshit rana': 'Harshit_Rana',
+  'yash dayal': 'Yash_Dayal',
+  'akash deep': 'Akash_Deep',
+  'shashank singh': 'Shashank_Singh',
+  'ashutosh sharma': 'Ashutosh_Sharma_(cricketer)',
+  'prabhsimran singh': 'Prabhsimran_Singh',
+  'sai sudharsan': 'Sai_Sudharsan',
+  'shahrukh khan': 'Shahrukh_Khan_(cricketer)'
 };
+
+function detectSportContext(cleanQuery, poolHint = '') {
+  const lowerKey = cleanQuery.toLowerCase();
+  const poolLower = String(poolHint || '').toLowerCase();
+
+  if (
+    poolLower.includes('warehouse') ||
+    poolLower.includes('unit') ||
+    poolLower.includes('mystery') ||
+    lowerKey.includes('unit #') ||
+    lowerKey.includes('vault #') ||
+    lowerKey.includes('container #')
+  ) {
+    return 'STORAGE';
+  }
+
+  if (
+    IPL_PLAYER_STATS[lowerKey] ||
+    poolLower.includes('batsm') ||
+    poolLower.includes('bowler') ||
+    poolLower.includes('wicket') ||
+    poolLower.includes('all-rounder') ||
+    poolLower.includes('uncapped') ||
+    poolLower.includes('marquee') ||
+    poolLower.includes('spin') ||
+    poolLower.includes('fast') ||
+    poolLower.includes('ipl') ||
+    poolLower.includes('cricket')
+  ) {
+    return 'CRICKET';
+  }
+
+  if (
+    FOOTBALL_PLAYER_STATS[lowerKey] ||
+    poolLower.includes('striker') ||
+    poolLower.includes('winger') ||
+    poolLower.includes('midfield') ||
+    poolLower.includes('back') ||
+    poolLower.includes('keeper') ||
+    poolLower.includes('football')
+  ) {
+    return 'FOOTBALL';
+  }
+
+  return 'GENERAL';
+}
+
+function matchesSportText(text, sportContext) {
+  if (!text) return false;
+  const lower = String(text).toLowerCase();
+  if (sportContext === 'CRICKET') {
+    return (
+      lower.includes('cricket') ||
+      lower.includes('ipl') ||
+      lower.includes('indian premier league') ||
+      lower.includes('batsman') ||
+      lower.includes('batter') ||
+      lower.includes('bowler') ||
+      lower.includes('wicket') ||
+      lower.includes('all-rounder') ||
+      lower.includes('twenty20')
+    );
+  }
+  if (sportContext === 'FOOTBALL') {
+    return (
+      lower.includes('football') ||
+      lower.includes('soccer') ||
+      lower.includes('striker') ||
+      lower.includes('midfielder') ||
+      lower.includes('defender') ||
+      lower.includes('goalkeeper') ||
+      lower.includes('winger') ||
+      lower.includes('premier league') ||
+      lower.includes('la liga') ||
+      lower.includes('serie a') ||
+      lower.includes('bundesliga')
+    );
+  }
+  return true;
+}
 
 /**
  * Primary search: Wikipedia REST Page Summary + MediaWiki PageImages API
@@ -108,56 +223,56 @@ async function searchWikipediaImage(query, skipUrl = null, poolHint = '') {
   const cleanQuery = sanitizeSearchName(query);
   if (!cleanQuery) return null;
 
-  const lowerKey = cleanQuery.toLowerCase();
-  const directTitle = WIKI_PAGE_OVERRIDES[lowerKey] || cleanQuery.replace(/\s+/g, '_');
+  const sportContext = detectSportContext(cleanQuery, poolHint);
+  if (sportContext === 'STORAGE') return null;
 
-  // 1. Try direct Wikipedia REST Summary
-  try {
-    const encoded = encodeURIComponent(directTitle);
-    const res = await fetchWithTimeout(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`
-    );
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.type !== 'disambiguation') {
-        const candidate = data?.thumbnail?.source || data?.originalimage?.source;
-        if (isSuitableImageUrl(candidate) && candidate !== skipUrl) {
-          return candidate;
+  const lowerKey = cleanQuery.toLowerCase();
+  const hasExplicitOverride = Boolean(WIKI_PAGE_OVERRIDES[lowerKey]);
+  const directCandidates = hasExplicitOverride
+    ? [WIKI_PAGE_OVERRIDES[lowerKey]]
+    : sportContext === 'CRICKET'
+    ? [`${cleanQuery.replace(/\s+/g, '_')}_(cricketer)`, cleanQuery.replace(/\s+/g, '_')]
+    : sportContext === 'FOOTBALL'
+    ? [`${cleanQuery.replace(/\s+/g, '_')}_(footballer)`, cleanQuery.replace(/\s+/g, '_')]
+    : [cleanQuery.replace(/\s+/g, '_')];
+
+  // 1. Try direct Wikipedia REST Summary with strict sport verification
+  for (const titleCandidate of directCandidates) {
+    try {
+      const encoded = encodeURIComponent(titleCandidate);
+      const res = await fetchWithTimeout(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encoded}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.type !== 'disambiguation') {
+          const combinedBio = `${data?.title || ''} ${data?.description || ''} ${data?.extract || ''}`;
+          if (hasExplicitOverride || matchesSportText(combinedBio, sportContext)) {
+            const candidate = data?.originalimage?.source || data?.thumbnail?.source;
+            if (isSuitableImageUrl(candidate) && candidate !== skipUrl) {
+              return candidate;
+            }
+          }
         }
       }
+    } catch {
+      // Continue to next candidate
     }
-  } catch {
-    // Continue to search fallback
   }
 
-  // 2. Try Wikipedia Action API search with pageimages
-  const poolLower = String(poolHint || '').toLowerCase();
-  const isCricket =
-    poolLower.includes('batsm') ||
-    poolLower.includes('bowler') ||
-    poolLower.includes('wicket') ||
-    poolLower.includes('all-rounder') ||
-    poolLower.includes('uncapped');
-  const isStorage =
-    poolLower.includes('warehouse') ||
-    poolLower.includes('unit') ||
-    poolLower.includes('mystery') ||
-    cleanQuery.toLowerCase().includes('unit #') ||
-    cleanQuery.toLowerCase().includes('vault #') ||
-    cleanQuery.toLowerCase().includes('container #');
-
-  if (isStorage) return null;
-
-  const searchQueries = [
-    cleanQuery,
-    isCricket ? `${cleanQuery} cricketer` : `${cleanQuery} footballer`
-  ];
+  // 2. Try Wikipedia Action API search with pageimages + description verification
+  const searchQueries =
+    sportContext === 'CRICKET'
+      ? [`${cleanQuery} cricketer`, `${cleanQuery} IPL cricketer`, cleanQuery]
+      : sportContext === 'FOOTBALL'
+      ? [`${cleanQuery} footballer`, cleanQuery]
+      : [cleanQuery];
 
   for (const sq of searchQueries) {
     try {
       const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
         sq
-      )}&gsrlimit=5&prop=pageimages&piprop=thumbnail&pithumbsize=500&format=json&origin=*`;
+      )}&gsrlimit=6&prop=pageimages|description|extracts&exintro=1&explaintext=1&piprop=thumbnail|original&pithumbsize=600&format=json&origin=*`;
       const res = await fetchWithTimeout(searchUrl);
       if (res.ok) {
         const data = await res.json();
@@ -165,7 +280,11 @@ async function searchWikipediaImage(query, skipUrl = null, poolHint = '') {
           (a, b) => (a.index || 99) - (b.index || 99)
         );
         for (const page of pages) {
-          const src = page?.thumbnail?.source;
+          const combinedBio = `${page?.title || ''} ${page?.description || ''} ${page?.extract || ''}`;
+          if (!matchesSportText(combinedBio, sportContext)) {
+            continue;
+          }
+          const src = page?.original?.source || page?.thumbnail?.source;
           if (isSuitableImageUrl(src) && src !== skipUrl) {
             return src;
           }
@@ -182,9 +301,11 @@ async function searchWikipediaImage(query, skipUrl = null, poolHint = '') {
 /**
  * Additional source 1: TheSportsDB Player/Team Search API (free public key = 3)
  */
-async function searchSportsDbImage(query, type = 'player', skipUrl = null) {
+async function searchSportsDbImage(query, type = 'player', skipUrl = null, poolHint = '') {
   const cleanQuery = sanitizeSearchName(query);
   if (!cleanQuery) return null;
+
+  const sportContext = detectSportContext(cleanQuery, poolHint);
 
   try {
     if (type === 'team') {
@@ -209,6 +330,18 @@ async function searchSportsDbImage(query, type = 'player', skipUrl = null) {
         const data = await res.json();
         const players = data?.player || [];
         for (const p of players) {
+          const pSport = String(p.strSport || '').toLowerCase();
+          if (sportContext === 'CRICKET' && pSport && !pSport.includes('cricket')) {
+            continue;
+          }
+          if (
+            sportContext === 'FOOTBALL' &&
+            pSport &&
+            !pSport.includes('soccer') &&
+            !pSport.includes('football')
+          ) {
+            continue;
+          }
           const img = p.strCutout || p.strThumb || p.strRender;
           if (isSuitableImageUrl(img) && img !== skipUrl) {
             return img;
@@ -225,19 +358,36 @@ async function searchSportsDbImage(query, type = 'player', skipUrl = null) {
 /**
  * Additional source 2: Wikimedia Commons File Search
  */
-async function searchWikimediaCommonsImage(query, skipUrl = null) {
+async function searchWikimediaCommonsImage(query, skipUrl = null, poolHint = '') {
   const cleanQuery = sanitizeSearchName(query);
   if (!cleanQuery) return null;
 
+  const sportContext = detectSportContext(cleanQuery, poolHint);
+  const searchPhrase =
+    sportContext === 'CRICKET'
+      ? `filetype:bitmap ${cleanQuery} cricketer`
+      : sportContext === 'FOOTBALL'
+      ? `filetype:bitmap ${cleanQuery} footballer`
+      : `filetype:bitmap ${cleanQuery}`;
+
   try {
     const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
-      `filetype:bitmap ${cleanQuery}`
-    )}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url&iiurlwidth=500&format=json&origin=*`;
+      searchPhrase
+    )}&gsrnamespace=6&gsrlimit=5&prop=imageinfo&iiprop=url&iiurlwidth=600&format=json&origin=*`;
     const res = await fetchWithTimeout(url);
     if (res.ok) {
       const data = await res.json();
       const pages = Object.values(data?.query?.pages || {});
       for (const p of pages) {
+        const titleLower = String(p?.title || '').toLowerCase();
+        if (
+          titleLower.includes('stadium') ||
+          titleLower.includes('trophy') ||
+          titleLower.includes('logo') ||
+          titleLower.includes('flag')
+        ) {
+          continue;
+        }
         const info = p?.imageinfo?.[0];
         const candidate = info?.thumburl || info?.url;
         if (isSuitableImageUrl(candidate) && candidate !== skipUrl) {
@@ -261,19 +411,19 @@ export async function resolveItemImage({ name, pool = 'General', skipUrl = null,
 
   const effectiveSkip = isRealOnlineImage(skipUrl) ? skipUrl : null;
 
-  // Step 1: Primary image search (Wikipedia)
+  // Step 1: Primary image search (Wikipedia with strict cricketer/footballer verification)
   const wikiImg = await searchWikipediaImage(name, effectiveSkip, pool);
   if (wikiImg && isSuitableImageUrl(wikiImg)) {
     return wikiImg;
   }
 
-  // Step 2: Additional sources (TheSportsDB + Wikimedia Commons)
-  const sportsImg = await searchSportsDbImage(name, 'player', effectiveSkip);
+  // Step 2: Additional sources (TheSportsDB + Wikimedia Commons with sport filter)
+  const sportsImg = await searchSportsDbImage(name, 'player', effectiveSkip, pool);
   if (sportsImg && isSuitableImageUrl(sportsImg)) {
     return sportsImg;
   }
 
-  const commonsImg = await searchWikimediaCommonsImage(name, effectiveSkip);
+  const commonsImg = await searchWikimediaCommonsImage(name, effectiveSkip, pool);
   if (commonsImg && isSuitableImageUrl(commonsImg)) {
     return commonsImg;
   }
@@ -282,7 +432,7 @@ export async function resolveItemImage({ name, pool = 'General', skipUrl = null,
   if (effectiveSkip) {
     const primaryWiki = await searchWikipediaImage(name, null, pool);
     if (primaryWiki && isSuitableImageUrl(primaryWiki)) return primaryWiki;
-    const primarySports = await searchSportsDbImage(name, 'player', null);
+    const primarySports = await searchSportsDbImage(name, 'player', null, pool);
     if (primarySports && isSuitableImageUrl(primarySports)) return primarySports;
     return effectiveSkip;
   }
