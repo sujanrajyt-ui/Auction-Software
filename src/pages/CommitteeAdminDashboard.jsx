@@ -104,13 +104,17 @@ export default function CommitteeAdminDashboard() {
   const [transferTargetTeamId, setTransferTargetTeamId] = useState('');
   const [transferAmountInput, setTransferAmountInput] = useState('');
 
-  // Retention & RTM Limits State
+  // Retention & RTM Limits State (with Drag-and-Drop + Set Price)
   const [retTeamId, setRetTeamId] = useState('');
   const [retPlayerName, setRetPlayerName] = useState('');
   const [retAmountInput, setRetAmountInput] = useState('');
   const [editingRetention, setEditingRetention] = useState(null);
-  const [maxRtmInput, setMaxRtmInput] = useState('');
-  const [maxRetentionsInput, setMaxRetentionsInput] = useState('');
+  const [maxRtmConfigInput, setMaxRtmConfigInput] = useState('');
+  const [maxRetConfigInput, setMaxRetConfigInput] = useState('');
+  const [retPoolSearch, setRetPoolSearch] = useState('');
+  const [draggedRetPayload, setDraggedRetPayload] = useState(null);
+  const [dragOverTeamId, setDragOverTeamId] = useState(null);
+  const [retentionPriceModal, setRetentionPriceModal] = useState(null);
 
   // Team Management State
   const [newTeamName, setNewTeamName] = useState('');
@@ -145,6 +149,13 @@ export default function CommitteeAdminDashboard() {
   // Refresh All Images & Restart Auction Confirmation State
   const [refreshingAllImages, setRefreshingAllImages] = useState(false);
   const [restartConfirmText, setRestartConfirmText] = useState('');
+
+  useEffect(() => {
+    if (auction) {
+      setMaxRtmConfigInput(String(auction.maxRtmPerTeam ?? 0));
+      setMaxRetConfigInput(String(auction.maxRetentionsPerTeam ?? 3));
+    }
+  }, [auction?.id, auction?.maxRtmPerTeam, auction?.maxRetentionsPerTeam]);
 
   const showNotice = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -331,6 +342,7 @@ export default function CommitteeAdminDashboard() {
       setBusyAction(false);
     }
   };
+  const handleRtmSubmit = handleRtmSaleSubmit;
 
   const handleUnsold = async () => {
     try {
@@ -614,10 +626,50 @@ export default function CommitteeAdminDashboard() {
     }
   };
 
-  // Retentions & RTM Limits
+  // Retentions & RTM Limits (Manual + Drag-and-Drop + Set Price)
+  const getDefaultRetentionPriceString = team => {
+    const count = team?.retentionsCount || team?.retentions?.length || 0;
+    if (cur === 'INR') {
+      const slabs = ['18Cr', '14Cr', '11Cr', '18Cr', '14Cr', '4Cr'];
+      return slabs[count] || '11Cr';
+    }
+    if (cur === 'EUR') {
+      const slabs = ['65M', '50M', '40M'];
+      return slabs[count] || '40M';
+    }
+    return '10000';
+  };
+
+  const getRetentionPricePresets = () => {
+    if (cur === 'INR') {
+      return [
+        { label: '₹21 Cr', value: '21Cr' },
+        { label: '₹18 Cr (Slab 1)', value: '18Cr' },
+        { label: '₹14 Cr (Slab 2)', value: '14Cr' },
+        { label: '₹11 Cr (Slab 3)', value: '11Cr' },
+        { label: '₹4 Cr (Uncapped)', value: '4Cr' }
+      ];
+    }
+    if (cur === 'EUR') {
+      return [
+        { label: '€80M', value: '80M' },
+        { label: '€65M', value: '65M' },
+        { label: '€50M', value: '50M' },
+        { label: '€40M', value: '40M' },
+        { label: '€25M', value: '25M' }
+      ];
+    }
+    return [
+      { label: '$15,000', value: '15000' },
+      { label: '$10,000', value: '10000' },
+      { label: '$5,000', value: '5000' }
+    ];
+  };
+
   const handleCreateRetention = async e => {
     e.preventDefault();
     try {
+      setBusyAction(true);
       const amt = parseCurrencyInput(retAmountInput, cur);
       await apiFetch(`/api/auctions/${auctionId}/retentions`, {
         method: 'POST',
@@ -632,17 +684,89 @@ export default function CommitteeAdminDashboard() {
       showNotice('Retention added, deducted from purse, and removed from auction queue.');
     } catch (err) {
       showNotice(err.message, 'error');
+    } finally {
+      setBusyAction(false);
     }
   };
 
-  const handleSaveRtmAndRetentionConfig = async e => {
+  const handleDropOnTeamCard = team => {
+    setDragOverTeamId(null);
+    if (!draggedRetPayload || isRetentionsLocked) return;
+
+    if (draggedRetPayload.kind === 'POOL_PLAYER') {
+      setRetentionPriceModal({
+        mode: 'CREATE',
+        teamId: team.id,
+        teamName: team.name,
+        playerName: draggedRetPayload.playerName,
+        amountInput: getDefaultRetentionPriceString(team)
+      });
+    } else if (draggedRetPayload.kind === 'EXISTING_RETENTION') {
+      setRetentionPriceModal({
+        mode: 'MOVE',
+        retentionId: draggedRetPayload.retentionId,
+        teamId: team.id,
+        teamName: team.name,
+        playerName: draggedRetPayload.playerName,
+        amountInput: formatCurrency(draggedRetPayload.amount, cur)
+      });
+    }
+    setDraggedRetPayload(null);
+  };
+
+  const handleConfirmRetentionPriceModal = async e => {
+    e.preventDefault();
+    if (!retentionPriceModal) return;
+    try {
+      setBusyAction(true);
+      const amt = parseCurrencyInput(retentionPriceModal.amountInput, cur);
+      if (retentionPriceModal.mode === 'MOVE' && retentionPriceModal.retentionId) {
+        await apiFetch(
+          `/api/auctions/${auctionId}/retentions/${retentionPriceModal.retentionId}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({
+              teamId: retentionPriceModal.teamId,
+              playerName: retentionPriceModal.playerName,
+              amount: amt
+            })
+          }
+        );
+        showNotice(
+          `${retentionPriceModal.playerName} retained by ${retentionPriceModal.teamName} for ${formatCurrency(amt, cur)}!`
+        );
+      } else {
+        await apiFetch(`/api/auctions/${auctionId}/retentions`, {
+          method: 'POST',
+          body: JSON.stringify({
+            teamId: retentionPriceModal.teamId,
+            playerName: retentionPriceModal.playerName,
+            amount: amt
+          })
+        });
+        showNotice(
+          `${retentionPriceModal.playerName} retained by ${retentionPriceModal.teamName} for ${formatCurrency(amt, cur)}!`
+        );
+      }
+      setRetentionPriceModal(null);
+    } catch (err) {
+      showNotice(err.message, 'error');
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleSaveRtmConfig = async e => {
     e.preventDefault();
     try {
+      setBusyAction(true);
       const nextRtm =
-        maxRtmInput !== '' ? Math.max(0, Number(maxRtmInput) || 0) : auction.maxRtmPerTeam ?? 0;
+        maxRtmConfigInput !== ''
+          ? Math.max(0, Number(maxRtmConfigInput) || 0)
+          : auction.maxRtmPerTeam ?? 0;
       const nextRet =
-        maxRetentionsInput !== ''
-          ? Math.max(0, Number(maxRetentionsInput) || 0)
+        maxRetConfigInput !== ''
+          ? Math.max(0, Number(maxRetConfigInput) || 0)
           : auction.maxRetentionsPerTeam ?? 3;
       await apiFetch(`/api/auctions/${auctionId}/config`, {
         method: 'PATCH',
@@ -655,6 +779,8 @@ export default function CommitteeAdminDashboard() {
       showNotice(`Updated RTM cards (${nextRtm}/team) and Max Retentions (${nextRet}/team).`);
     } catch (err) {
       showNotice(err.message, 'error');
+    } finally {
+      setBusyAction(false);
     }
   };
 
@@ -663,7 +789,7 @@ export default function CommitteeAdminDashboard() {
       await apiFetch(`/api/auctions/${auctionId}/retentions/${retentionId}`, {
         method: 'DELETE'
       });
-      showNotice('Retention deleted and full amount refunded to team purse.');
+      showNotice('Retention removed, full amount refunded, and player returned to auction pool.');
     } catch (err) {
       showNotice(err.message, 'error');
     }
@@ -677,12 +803,13 @@ export default function CommitteeAdminDashboard() {
       await apiFetch(`/api/auctions/${auctionId}/retentions/${editingRetention.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
+          teamId: editingRetention.teamId,
           playerName: editingRetention.playerName,
           amount: amt
         })
       });
       setEditingRetention(null);
-      showNotice('Retention updated and team purse adjusted.');
+      showNotice('Retention price updated and team purse recalculated.');
     } catch (err) {
       showNotice(err.message, 'error');
     }
@@ -735,6 +862,10 @@ export default function CommitteeAdminDashboard() {
     if (!editingTeam) return;
     try {
       const parsedPurse = parseCurrencyInput(editingTeam.startingPurseInput, cur);
+      const rawRtm =
+        editingTeam.rtmCardsTotalInput !== undefined
+          ? editingTeam.rtmCardsTotalInput
+          : editingTeam.rtmCardsTotal;
       await apiFetch(`/api/auctions/${auctionId}/teams/${editingTeam.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
@@ -747,9 +878,7 @@ export default function CommitteeAdminDashboard() {
           secondaryColor: editingTeam.secondaryColor,
           startingPurse: parsedPurse,
           rtmCardsTotal:
-            editingTeam.rtmCardsTotal !== undefined && editingTeam.rtmCardsTotal !== ''
-              ? Math.max(0, Number(editingTeam.rtmCardsTotal) || 0)
-              : undefined,
+            rawRtm !== undefined && rawRtm !== '' ? Math.max(0, Number(rawRtm) || 0) : undefined,
           disabled: editingTeam.disabled
         })
       });
@@ -2504,152 +2633,353 @@ export default function CommitteeAdminDashboard() {
             {!isRetentionsLocked && (
               <form
                 onSubmit={handleCreateRetention}
-                className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 grid grid-cols-1 sm:grid-cols-4 gap-4 items-end"
+                className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 space-y-4"
               >
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
-                    Select Team
-                  </label>
-                  <select
-                    value={retTeamId || auction.teams?.[0]?.id || ''}
-                    onChange={e => setRetTeamId(e.target.value)}
-                    className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm text-white"
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
+                      Select Team
+                    </label>
+                    <select
+                      value={retTeamId || auction.teams?.[0]?.id || ''}
+                      onChange={e => setRetTeamId(e.target.value)}
+                      className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm text-white"
+                    >
+                      {(auction.teams || []).map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({t.retentionsCount}/{auction.maxRetentionsPerTeam} retained)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
+                      Retained Player / Item Name
+                    </label>
+                    <input
+                      type="text"
+                      value={retPlayerName}
+                      onChange={e => setRetPlayerName(e.target.value)}
+                      placeholder="e.g. Virat Kohli"
+                      required
+                      className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
+                      Retention Price / Amount
+                    </label>
+                    <input
+                      type="text"
+                      value={retAmountInput}
+                      onChange={e => setRetAmountInput(e.target.value)}
+                      placeholder={cur === 'INR' ? 'e.g. 18Cr' : 'e.g. 65M'}
+                      required
+                      className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm font-mono-num text-white"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs uppercase tracking-wider cursor-pointer"
                   >
-                    {(auction.teams || []).map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.name} ({t.retentionsCount}/{auction.maxRetentionsPerTeam} retained)
-                      </option>
-                    ))}
-                  </select>
+                    + Add Retention
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
-                    Retained Player / Item Name
-                  </label>
-                  <input
-                    type="text"
-                    value={retPlayerName}
-                    onChange={e => setRetPlayerName(e.target.value)}
-                    placeholder="e.g. Virat Kohli"
-                    required
-                    className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm text-white"
-                  />
+
+                {/* Quick Price Preset Pills for Manual Entry */}
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Quick Price Slabs:
+                  </span>
+                  {getRetentionPricePresets().map(preset => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => setRetAmountInput(preset.value)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-num font-bold border transition cursor-pointer ${
+                        retAmountInput === preset.value
+                          ? 'bg-amber-500 text-slate-950 border-amber-400'
+                          : 'bg-slate-950 text-amber-300 border-slate-800 hover:border-amber-500/40'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
-                    Retention Amount
-                  </label>
-                  <input
-                    type="text"
-                    value={retAmountInput}
-                    onChange={e => setRetAmountInput(e.target.value)}
-                    placeholder="e.g. 21Cr"
-                    required
-                    className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm font-mono-num text-white"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs uppercase tracking-wider cursor-pointer"
-                >
-                  + Add Retention
-                </button>
               </form>
             )}
 
-            {/* Team-by-Team Retention Board */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(auction.teams || []).map(team => (
-                <div
-                  key={team.id}
-                  className="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 flex flex-col justify-between gap-4"
-                  style={{ borderTopWidth: '4px', borderTopColor: team.primaryColor }}
-                >
+            {/* DRAG & DROP AVAILABLE PLAYERS POOL FOR RETENTION */}
+            {!isRetentionsLocked && (
+              <div className="rounded-3xl bg-slate-900/90 border border-amber-500/30 p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <TeamLogo team={team} size="sm" />
-                        <div>
-                          <div className="font-display font-bold text-white text-sm">
-                            {team.name}
-                          </div>
-                          <div className="text-[11px] text-slate-400 flex items-center gap-2">
-                            <span>
-                              Retained: {team.retentionsCount} / {auction.maxRetentionsPerTeam}
-                            </span>
-                            {(team.rtmTotal > 0 || (auction.maxRtmPerTeam || 0) > 0) && (
-                              <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px]">
-                                RTM: {team.rtmRemaining}/{team.rtmTotal}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] uppercase text-slate-400">Remaining Purse</div>
-                        <div className="font-mono-num text-sm font-extrabold text-amber-400">
-                          {formatCurrency(team.remainingPurse, cur)}
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-extrabold uppercase tracking-wider">
+                        Drag & Drop Enabled
+                      </span>
+                      <h4 className="font-display text-sm font-bold text-white uppercase tracking-wider">
+                        Available Players Pool (Drag onto any Team Card below to Retain & Set Price)
+                      </h4>
                     </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Drag any player chip below and drop it onto a franchise card, or click{' '}
+                      <span className="text-amber-300 font-bold">Retain & Set Price</span> to assign them immediately.
+                    </p>
+                  </div>
+                  <div className="relative w-full sm:w-72">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={retPoolSearch}
+                      onChange={e => setRetPoolSearch(e.target.value)}
+                      placeholder="Search player, role, or pool..."
+                      className="w-full rounded-xl bg-slate-950 border border-slate-800 pl-9 pr-3.5 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
 
-                    <div className="mt-4 space-y-2">
-                      {(team.retentions || []).map(ret => (
-                        <div
-                          key={ret.id}
-                          className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2"
-                        >
-                          <div>
-                            <div className="text-xs font-bold text-white">
-                              {ret.playerName}
-                              <OverseasPlane playerName={ret.playerName} auction={auction} />
+                {(() => {
+                  const retainedNamesSet = new Set(
+                    (auction.teams || []).flatMap(t =>
+                      (t.retentions || []).map(r => (r.playerName || '').toLowerCase().trim())
+                    )
+                  );
+                  const availablePoolItems = (auction.items || []).filter(item => {
+                    if (item.status === 'SOLD') return false;
+                    if (retainedNamesSet.has((item.name || '').toLowerCase().trim())) return false;
+                    if (!retPoolSearch.trim()) return true;
+                    const q = retPoolSearch.toLowerCase();
+                    return (
+                      (item.name || '').toLowerCase().includes(q) ||
+                      (item.roleOrPosition || '').toLowerCase().includes(q) ||
+                      (item.poolCode || '').toLowerCase().includes(q) ||
+                      (item.country || '').toLowerCase().includes(q)
+                    );
+                  });
+
+                  if (availablePoolItems.length === 0) {
+                    return (
+                      <div className="py-6 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-2xl">
+                        No matching players found in the auction pool. You can still type any player name in the manual box above!
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-64 overflow-y-auto pr-1">
+                      {availablePoolItems.slice(0, 60).map(item => {
+                        const defaultTargetTeam =
+                          (auction.teams || []).find(t => t.id === retTeamId) ||
+                          auction.teams?.[0];
+                        return (
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={e => {
+                              setDraggedRetPayload({
+                                kind: 'POOL_PLAYER',
+                                itemId: item.id,
+                                playerName: item.name,
+                                basePrice: item.basePrice
+                              });
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            onDragEnd={() => {
+                              setDraggedRetPayload(null);
+                              setDragOverTeamId(null);
+                            }}
+                            className="group p-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/50 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing transition select-none"
+                          >
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-white truncate flex items-center gap-1">
+                                <span className="text-slate-500 group-hover:text-amber-400">⋮⋮</span>
+                                <span className="truncate">{item.name}</span>
+                                <OverseasPlane playerName={item.name} auction={auction} />
+                              </div>
+                              <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                                {item.poolCode ? `[${item.poolCode}] ` : ''}
+                                {item.roleOrPosition} • Base {formatCurrency(item.basePrice, cur)}
+                              </div>
                             </div>
-                            <div className="text-xs font-mono-num text-amber-400 font-bold">
-                              {formatCurrency(ret.amount, cur)}
-                            </div>
-                          </div>
-                          {!isRetentionsLocked && (
-                            <div className="flex items-center gap-1">
+                            {defaultTargetTeam && (
                               <button
                                 type="button"
                                 onClick={() =>
-                                  setEditingRetention({
-                                    ...ret,
-                                    amountInput: formatCurrency(ret.amount, cur)
+                                  setRetentionPriceModal({
+                                    mode: 'CREATE',
+                                    teamId: defaultTargetTeam.id,
+                                    teamName: defaultTargetTeam.name,
+                                    playerName: item.name,
+                                    amountInput: getDefaultRetentionPriceString(defaultTargetTeam)
                                   })
                                 }
-                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+                                className="shrink-0 px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500 text-amber-300 hover:text-slate-950 font-extrabold text-[10px] uppercase tracking-wider transition cursor-pointer"
+                                title="Click to choose team & set retention price"
                               >
-                                <Edit3 className="w-3.5 h-3.5" />
+                                Set Price
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteRetention(ret.id)}
-                                className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 cursor-pointer"
-                                title="Delete & Refund Full Amount"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Team-by-Team Retention Board (Drop Zones) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {(auction.teams || []).map(team => {
+                const isDropActive = dragOverTeamId === team.id && !isRetentionsLocked;
+                return (
+                  <div
+                    key={team.id}
+                    onDragOver={e => {
+                      if (isRetentionsLocked) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverTeamId !== team.id) setDragOverTeamId(team.id);
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverTeamId === team.id) setDragOverTeamId(null);
+                    }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      handleDropOnTeamCard(team);
+                    }}
+                    className={`rounded-2xl bg-slate-900/90 border p-5 flex flex-col justify-between gap-4 transition ${
+                      isDropActive
+                        ? 'border-amber-400 ring-2 ring-amber-400/50 bg-amber-500/5 scale-[1.01]'
+                        : 'border-slate-800'
+                    }`}
+                    style={{ borderTopWidth: '4px', borderTopColor: team.primaryColor }}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <TeamLogo team={team} size="sm" />
+                          <div>
+                            <div className="font-display font-bold text-white text-sm">
+                              {team.name}
                             </div>
-                          )}
+                            <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                              <span>
+                                Retained: {team.retentionsCount} / {auction.maxRetentionsPerTeam}
+                              </span>
+                              {(team.rtmTotal > 0 || (auction.maxRtmPerTeam || 0) > 0) && (
+                                <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px]">
+                                  RTM: {team.rtmRemaining}/{team.rtmTotal}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      ))}
-                      {(!team.retentions || team.retentions.length === 0) && (
-                        <div className="py-4 text-center text-xs text-slate-500">
-                          No retentions entered for {team.name}
+                        <div className="text-right">
+                          <div className="text-[10px] uppercase text-slate-400">Remaining Purse</div>
+                          <div className="font-mono-num text-sm font-extrabold text-amber-400">
+                            {formatCurrency(team.remainingPurse, cur)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {!isRetentionsLocked && (
+                        <div
+                          className={`mt-3 rounded-xl border border-dashed px-3 py-2 text-center text-[11px] font-semibold transition ${
+                            isDropActive
+                              ? 'border-amber-400 bg-amber-500/15 text-amber-200'
+                              : 'border-slate-800/90 bg-slate-950/50 text-slate-400'
+                          }`}
+                        >
+                          {isDropActive
+                            ? `Release to retain for ${team.shortName || team.name} & set price`
+                            : 'Drop player here to retain & set price'}
                         </div>
                       )}
+
+                      <div className="mt-3 space-y-2">
+                        {(team.retentions || []).map(ret => (
+                          <div
+                            key={ret.id}
+                            draggable={!isRetentionsLocked}
+                            onDragStart={e => {
+                              if (isRetentionsLocked) return;
+                              setDraggedRetPayload({
+                                kind: 'EXISTING_RETENTION',
+                                retentionId: ret.id,
+                                fromTeamId: team.id,
+                                playerName: ret.playerName,
+                                amount: ret.amount
+                              });
+                              e.dataTransfer.effectAllowed = 'move';
+                            }}
+                            onDragEnd={() => {
+                              setDraggedRetPayload(null);
+                              setDragOverTeamId(null);
+                            }}
+                            className={`p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2 ${
+                              !isRetentionsLocked ? 'cursor-grab active:cursor-grabbing hover:border-slate-700' : ''
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-white flex items-center gap-1 truncate">
+                                {!isRetentionsLocked && (
+                                  <span className="text-slate-500 text-[10px]">⋮⋮</span>
+                                )}
+                                <span className="truncate">{ret.playerName}</span>
+                                <OverseasPlane playerName={ret.playerName} auction={auction} />
+                              </div>
+                              <div className="text-xs font-mono-num text-amber-400 font-bold">
+                                {formatCurrency(ret.amount, cur)}
+                              </div>
+                            </div>
+                            {!isRetentionsLocked && (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditingRetention({
+                                      ...ret,
+                                      teamId: team.id,
+                                      amountInput: formatCurrency(ret.amount, cur)
+                                    })
+                                  }
+                                  className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+                                  title="Set or Change Retention Price"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  Set Price
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteRetention(ret.id)}
+                                  className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 cursor-pointer"
+                                  title="Delete Retention, Refund Purse & Return to Pool"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                        {(!team.retentions || team.retentions.length === 0) && (
+                          <div className="py-3 text-center text-xs text-slate-500">
+                            No retentions entered for {team.name}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Total Retention Spend:</span>
+                      <span className="font-mono-num font-bold text-white">
+                        {formatCurrency(team.retentionSpend, cur)}
+                      </span>
                     </div>
                   </div>
-
-                  <div className="pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Total Retention Spend:</span>
-                    <span className="font-mono-num font-bold text-white">
-                      {formatCurrency(team.retentionSpend, cur)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -4068,6 +4398,115 @@ export default function CommitteeAdminDashboard() {
         </div>
       )}
 
+      {/* DRAG & DROP / QUICK RETAIN — SET RETENTION PRICE MODAL */}
+      {retentionPriceModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={handleConfirmRetentionPriceModal}
+            className="w-full max-w-md rounded-3xl bg-slate-900 border border-amber-500/40 p-6 space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">
+                  {retentionPriceModal.mode === 'MOVE'
+                    ? 'Move / Update Retention'
+                    : 'Assign Retention & Set Price'}
+                </span>
+                <h3 className="font-display text-lg font-bold text-white">
+                  {retentionPriceModal.playerName}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setRetentionPriceModal(null)}>
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
+                Franchise / Team
+              </label>
+              <select
+                value={retentionPriceModal.teamId}
+                onChange={e => {
+                  const selectedTeam = (auction.teams || []).find(t => t.id === e.target.value);
+                  setRetentionPriceModal({
+                    ...retentionPriceModal,
+                    teamId: e.target.value,
+                    teamName: selectedTeam?.name || retentionPriceModal.teamName
+                  });
+                }}
+                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm text-white"
+              >
+                {(auction.teams || []).map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.retentionsCount}/{auction.maxRetentionsPerTeam} retained • Purse:{' '}
+                    {formatCurrency(t.remainingPurse, cur)})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
+                Set Retention Price (Deducted from Team Purse)
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={retentionPriceModal.amountInput}
+                onChange={e =>
+                  setRetentionPriceModal({
+                    ...retentionPriceModal,
+                    amountInput: e.target.value
+                  })
+                }
+                placeholder={cur === 'INR' ? 'e.g. 18Cr' : 'e.g. 65M'}
+                required
+                className="w-full rounded-xl bg-slate-950 border border-amber-500/50 px-3.5 py-2.5 text-base font-mono-num font-bold text-amber-300 focus:outline-none"
+              />
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {getRetentionPricePresets().map(preset => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() =>
+                      setRetentionPriceModal({
+                        ...retentionPriceModal,
+                        amountInput: preset.value
+                      })
+                    }
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-num font-bold border transition cursor-pointer ${
+                      retentionPriceModal.amountInput === preset.value
+                        ? 'bg-amber-500 text-slate-950 border-amber-400'
+                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-amber-500/40'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setRetentionPriceModal(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-xs font-bold text-slate-300 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={busyAction}
+                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs uppercase cursor-pointer"
+              >
+                Confirm & Set Price
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* EDIT RETENTION MODAL */}
       {editingRetention && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -4076,10 +4515,30 @@ export default function CommitteeAdminDashboard() {
             className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-700 p-6 space-y-4"
           >
             <div className="flex items-center justify-between">
-              <h3 className="font-display text-lg font-bold text-white">Edit Retention</h3>
+              <h3 className="font-display text-lg font-bold text-white">
+                Set / Edit Retention Price
+              </h3>
               <button type="button" onClick={() => setEditingRetention(null)}>
                 <X className="w-5 h-5 text-slate-400" />
               </button>
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
+                Franchise / Team
+              </label>
+              <select
+                value={editingRetention.teamId || ''}
+                onChange={e =>
+                  setEditingRetention({ ...editingRetention, teamId: e.target.value })
+                }
+                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-sm text-white"
+              >
+                {(auction.teams || []).map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.retentionsCount}/{auction.maxRetentionsPerTeam} retained)
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
@@ -4097,7 +4556,7 @@ export default function CommitteeAdminDashboard() {
             </div>
             <div>
               <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
-                Retention Amount
+                Retention Price / Amount
               </label>
               <input
                 type="text"
@@ -4106,8 +4565,26 @@ export default function CommitteeAdminDashboard() {
                   setEditingRetention({ ...editingRetention, amountInput: e.target.value })
                 }
                 required
-                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-sm font-mono-num text-white"
+                className="w-full rounded-xl bg-slate-950 border border-amber-500/50 px-3.5 py-2 text-sm font-mono-num font-bold text-amber-300"
               />
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {getRetentionPricePresets().map(preset => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() =>
+                      setEditingRetention({ ...editingRetention, amountInput: preset.value })
+                    }
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-num font-bold border transition cursor-pointer ${
+                      editingRetention.amountInput === preset.value
+                        ? 'bg-amber-500 text-slate-950 border-amber-400'
+                        : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-amber-500/40'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button
@@ -4121,7 +4598,7 @@ export default function CommitteeAdminDashboard() {
                 type="submit"
                 className="px-5 py-2 rounded-xl bg-amber-500 text-slate-950 font-extrabold text-xs uppercase cursor-pointer"
               >
-                Save Retention
+                Save Retention Price
               </button>
             </div>
           </form>

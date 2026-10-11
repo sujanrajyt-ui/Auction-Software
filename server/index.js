@@ -29,7 +29,8 @@ import {
   calculateNextBid,
   getIncrementForAmount,
   formatCurrency,
-  normalizePlayerName
+  normalizePlayerName,
+  cleanPlayerKey
 } from '../shared/constants.js';
 
 try {
@@ -42,7 +43,9 @@ function findRetentionByPlayerName(auctionId, playerName, excludeRetentionId = n
   const norm = normalizePlayerName(playerName);
   if (!norm) return null;
   const rows = db
-    .prepare('SELECT * FROM retentions WHERE auctionId = ?')
+    .prepare(
+      'SELECT r.*, t.name AS teamName FROM retentions r LEFT JOIN teams t ON r.teamId = t.id WHERE r.auctionId = ?'
+    )
     .all(auctionId);
   return (
     rows.find(
@@ -3568,7 +3571,7 @@ app.post('/api/auctions/:auctionId/retentions', requireAuctionAdmin, async (req,
           playerName: cleanName,
           amount: numAmount,
           remainingPurse: purseAfter,
-          removedFromAuctionQueue: removedAuctionItems.length
+          removedFromAuctionQueue: removedAuctionItems
         }
       });
     });
@@ -3580,10 +3583,10 @@ app.post('/api/auctions/:auctionId/retentions', requireAuctionAdmin, async (req,
   }
 });
 
-// Section 27: Edit Retention (Editable only before LIVE)
+// Section 27: Edit Retention (Editable only before LIVE; also supports moving to another teamId via drag-and-drop)
 app.patch('/api/auctions/:auctionId/retentions/:retentionId', requireAuctionAdmin, (req, res) => {
   const { auctionId, retentionId } = req.params;
-  const { playerName, amount } = req.body || {};
+  const { playerName, amount, teamId: targetTeamId } = req.body || {};
 
   try {
     runTransaction(() => {
@@ -3602,8 +3605,24 @@ app.patch('/api/auctions/:auctionId/retentions/:retentionId', requireAuctionAdmi
         .get(retentionId, auctionId);
       if (!retention) throw new Error('Retention not found.');
 
-      const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(retention.teamId);
-      const purseBefore = recalculateTeamPurse(retention.teamId).remainingPurse;
+      const newTeamId = targetTeamId || retention.teamId;
+      const oldTeam = db.prepare('SELECT * FROM teams WHERE id = ?').get(retention.teamId);
+      const newTeam = db.prepare('SELECT * FROM teams WHERE id = ? AND auctionId = ?').get(newTeamId, auctionId);
+      if (!newTeam) throw new Error('Target team not found.');
+
+      if (newTeamId !== retention.teamId) {
+        const destCount =
+          db
+            .prepare('SELECT COUNT(*) AS cnt FROM retentions WHERE auctionId = ? AND teamId = ?')
+            .get(auctionId, newTeamId)?.cnt || 0;
+        if (destCount >= Number(auction.maxRetentionsPerTeam)) {
+          throw new Error(
+            `Maximum retention count (${auction.maxRetentionsPerTeam}) reached for ${newTeam.name}.`
+          );
+        }
+      }
+
+      const purseBefore = recalculateTeamPurse(newTeamId).remainingPurse;
 
       const updatedName =
         playerName !== undefined
@@ -3619,24 +3638,27 @@ app.patch('/api/auctions/:auctionId/retentions/:retentionId', requireAuctionAdmi
         throw new Error(`${updatedName} is already retained by ${otherRetention.teamName}.`);
       }
 
-      const availableForEdit = purseBefore + Number(retention.amount);
+      const availableForEdit =
+        newTeamId === retention.teamId
+          ? purseBefore + Number(retention.amount)
+          : purseBefore;
       if (updatedAmount > availableForEdit) {
         throw new Error(
-          `Insufficient purse for ${team?.name}: maximum available is ${formatCurrency(availableForEdit, auction.currency)}.`
+          `Insufficient purse for ${newTeam?.name}: maximum available is ${formatCurrency(availableForEdit, auction.currency)}.`
         );
       }
 
       const now = new Date().toISOString();
-      db.prepare('UPDATE retentions SET playerName = ?, amount = ?, updatedAt = ? WHERE id = ?').run(
-        updatedName,
-        updatedAmount,
-        now,
-        retentionId
-      );
+      db.prepare(
+        'UPDATE retentions SET teamId = ?, playerName = ?, amount = ?, updatedAt = ? WHERE id = ?'
+      ).run(newTeamId, updatedName, updatedAmount, now, retentionId);
 
       removeRetainedPlayerFromAuctionItems(auctionId, updatedName);
 
-      const purseAfter = recalculateTeamPurse(retention.teamId).remainingPurse;
+      if (newTeamId !== retention.teamId) {
+        recalculateTeamPurse(retention.teamId);
+      }
+      const purseAfter = recalculateTeamPurse(newTeamId).remainingPurse;
 
       recordAudit({
         auctionId,
@@ -3646,13 +3668,13 @@ app.patch('/api/auctions/:auctionId/retentions/:retentionId', requireAuctionAdmi
         entityId: retentionId,
         entityName: updatedName,
         previousValue: {
-          teamName: team?.name,
+          teamName: oldTeam?.name,
           playerName: retention.playerName,
           amount: retention.amount,
           remainingPurse: purseBefore
         },
         newValue: {
-          teamName: team?.name,
+          teamName: newTeam?.name,
           playerName: updatedName,
           amount: updatedAmount,
           remainingPurse: purseAfter
@@ -3667,7 +3689,7 @@ app.patch('/api/auctions/:auctionId/retentions/:retentionId', requireAuctionAdmi
   }
 });
 
-// Section 27: Delete Retention before LIVE -> Automatically refunds full amount
+// Section 27: Delete Retention before LIVE -> Automatically refunds full amount & restores player to auction pool
 app.delete('/api/auctions/:auctionId/retentions/:retentionId', requireAuctionAdmin, (req, res) => {
   const { auctionId, retentionId } = req.params;
 
@@ -3693,6 +3715,43 @@ app.delete('/api/auctions/:auctionId/retentions/:retentionId', requireAuctionAdm
 
       db.prepare('DELETE FROM retentions WHERE id = ?').run(retentionId);
 
+      // Restore player back to the auction items pool if not already present
+      const existingItem = db
+        .prepare('SELECT id FROM items WHERE auctionId = ?')
+        .all(auctionId)
+        .find(it => normalizePlayerName(it.name) === normalizePlayerName(retention.playerName));
+      if (!existingItem) {
+        const firstPool = db
+          .prepare('SELECT * FROM pools WHERE auctionId = ? ORDER BY sortOrder ASC LIMIT 1')
+          .get(auctionId);
+        const maxQ =
+          db
+            .prepare('SELECT COALESCE(MAX(queueOrder), -1) AS mq FROM items WHERE auctionId = ?')
+            .get(auctionId)?.mq ?? -1;
+        const basePrice = Number(firstPool?.defaultBasePrice || 20_000_000);
+        const now = new Date().toISOString();
+        db.prepare(`
+          INSERT INTO items (
+            id, auctionId, name, imageUrl, basePrice, originalBasePrice,
+            poolId, poolName, status, queueOrder, currentBid,
+            highestBidderTeamId, soldToTeamId, soldAmount, soldAt,
+            soldViaRtm, reauctionCount, createdAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'QUEUED', ?, 0, NULL, NULL, NULL, NULL, 0, 0, ?, ?)
+        `).run(
+          uid('item'),
+          auctionId,
+          retention.playerName,
+          retention.imageUrl || '',
+          basePrice,
+          basePrice,
+          firstPool?.id || null,
+          firstPool?.name || 'Marquee Set',
+          maxQ + 1,
+          now,
+          now
+        );
+      }
+
       // Automatically refund full amount
       const purseAfter = recalculateTeamPurse(retention.teamId).remainingPurse;
 
@@ -3711,7 +3770,8 @@ app.delete('/api/auctions/:auctionId/retentions/:retentionId', requireAuctionAdm
         },
         newValue: {
           refundedAmount: retention.amount,
-          remainingPurse: purseAfter
+          remainingPurse: purseAfter,
+          returnedToAuctionPool: true
         }
       });
     });
