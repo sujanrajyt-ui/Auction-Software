@@ -13,7 +13,8 @@ import {
   AUCTION_TEMPLATES,
   findBuiltInLogo,
   generateCrestSvgDataUri,
-  generateItemSvgDataUri
+  generateItemSvgDataUri,
+  isIplAuction
 } from '../shared/constants.js';
 
 /**
@@ -386,6 +387,82 @@ export function ensureSeedData({ forceReset = false } = {}) {
         INSERT OR IGNORE INTO auction_admins (id, auctionId, userId, role, assignedAt)
         VALUES (?, ?, ?, ?, ?)
       `).run('aa_sw_auctioneer', swAuctionId, auctioneerId, ROLES.AUCTIONEER, now);
+    }
+  }
+
+  // Ensure Kochi Tuskers Kerala and Pune Warriors India are present across all IPL auctions
+  try {
+    const allAuctions = db.prepare('SELECT * FROM auctions').all();
+    for (const auc of allAuctions) {
+      if (isIplAuction(auc)) {
+        syncIplTeams(auc.id);
+      }
+    }
+  } catch (err) {
+    console.error('Error syncing IPL teams:', err);
+  }
+}
+
+export function syncIplTeams(auctionId) {
+  const iplTeams = [
+    {
+      name: 'Kochi Tuskers Kerala',
+      code: 'KTK',
+      shortName: 'KTK',
+      pin: '2011',
+      primaryColor: '#6B2D5C',
+      secondaryColor: '#FF6B00',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/en/2/20/Kochi_Tuskers_Kerala_Logo.png'
+    },
+    {
+      name: 'Pune Warriors India',
+      code: 'PWI',
+      shortName: 'PWI',
+      pin: '2012',
+      primaryColor: '#004B87',
+      secondaryColor: '#41B6E6',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/en/3/30/Pune_Warriors_India_IPL_Team_Logo.svg'
+    }
+  ];
+
+  const auction = db.prepare('SELECT * FROM auctions WHERE id = ?').get(auctionId);
+  if (!auction) return;
+  const purse = auction.startingPurse || 1_200_000_000;
+  const now = new Date().toISOString();
+
+  for (const t of iplTeams) {
+    const existing = db
+      .prepare('SELECT id FROM teams WHERE auctionId = ? AND (LOWER(name) = ? OR LOWER(code) = ?)')
+      .get(auctionId, t.name.toLowerCase(), t.code.toLowerCase());
+
+    if (!existing) {
+      const maxSort = db
+        .prepare('SELECT COALESCE(MAX(sortOrder), 0) AS maxSort FROM teams WHERE auctionId = ?')
+        .get(auctionId);
+      const nextSort = (maxSort?.maxSort || 0) + 1;
+      const teamId = uid('team');
+
+      db.prepare(`
+        INSERT INTO teams (
+          id, auctionId, name, shortName, code, pin, logoUrl,
+          primaryColor, secondaryColor, startingPurse, remainingPurse,
+          disabled, sortOrder, createdAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+      `).run(
+        teamId,
+        auctionId,
+        t.name,
+        t.shortName,
+        t.code,
+        t.pin,
+        t.logoUrl,
+        t.primaryColor,
+        t.secondaryColor,
+        purse,
+        purse,
+        nextSort,
+        now
+      );
     }
   }
 }

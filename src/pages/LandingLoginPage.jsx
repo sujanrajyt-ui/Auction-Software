@@ -324,6 +324,18 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                   {submitting ? 'Synchronizing Team Panel...' : 'Enter Live Team Panel'}
                 </button>
 
+                {selectedAuctionId && (
+                  <div className="pt-2">
+                    <Link
+                      to={`/players/${selectedAuctionId}`}
+                      className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 hover:border-amber-500/40 font-bold text-xs flex items-center justify-center gap-2 transition"
+                    >
+                      <Users className="w-4 h-4 text-amber-400" />
+                      <span>Browse Players Pool & Career Stats</span>
+                    </Link>
+                  </div>
+                )}
+
                 <div className="pt-3 border-t border-slate-800/80 text-center">
                   <p className="text-[11px] text-slate-400">
                     Team Codes and PINs are privately issued by the Committee Admin.

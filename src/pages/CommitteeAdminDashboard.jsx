@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Gavel,
   Play,
@@ -33,7 +33,8 @@ import {
   GripVertical,
   Shuffle,
   Zap,
-  FolderPlus
+  FolderPlus,
+  Camera
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAuctionSocket } from '../hooks/useAuctionSocket.js';
@@ -515,6 +516,25 @@ export default function CommitteeAdminDashboard() {
       showNotice(err.message, 'error');
     } finally {
       setRefreshingStats(false);
+    }
+  };
+
+  const handleAutoDeduplicate = async () => {
+    if (!window.confirm('Scan and delete duplicate players from this auction? Any sold or retained players will be kept safe.')) {
+      return;
+    }
+    try {
+      showNotice('Scanning and removing duplicate players...');
+      const res = await apiFetch(`/api/auctions/${auctionId}/items/deduplicate`, {
+        method: 'POST'
+      });
+      if (res.removedCount > 0) {
+        showNotice(`Removed ${res.removedCount} duplicate players (${res.removedNames.join(', ')})!`);
+      } else {
+        showNotice('No duplicate players found. All players in the auction roster are 100% unique!');
+      }
+    } catch (err) {
+      showNotice(err.message, 'error');
     }
   };
 
@@ -2413,6 +2433,23 @@ export default function CommitteeAdminDashboard() {
                       ? 'Refreshing Stats & Last Team...'
                       : 'Refresh All Stats & Last Team'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleAutoDeduplicate}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 font-extrabold text-xs uppercase tracking-wider shadow cursor-pointer"
+                    title="Automatically scan and delete duplicate players from this auction"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    Auto-Delete Duplicates
+                  </button>
+                  <Link
+                    to={`/players/${auction.id}`}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-extrabold text-xs uppercase tracking-wider shadow cursor-pointer"
+                    title="View & search all players in full-screen showcase"
+                  >
+                    <Users className="w-3.5 h-3.5 text-emerald-400" />
+                    Players Pool Showcase
+                  </Link>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative">
@@ -4508,14 +4545,49 @@ export default function CommitteeAdminDashboard() {
             </div>
             <div>
               <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
-                Manual Image URL Override
+                Player Headshot (Upload File or Enter URL)
               </label>
-              <input
-                type="text"
-                value={editingItem.imageUrl}
-                onChange={e => setEditingItem({ ...editingItem, imageUrl: e.target.value })}
-                className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-xs text-white"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editingItem.imageUrl || ''}
+                  onChange={e => setEditingItem({ ...editingItem, imageUrl: e.target.value })}
+                  placeholder="Paste URL or upload local file..."
+                  className="flex-1 rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-xs text-white"
+                />
+                <label className="px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0">
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Upload</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => {
+                        setEditingItem(prev => ({ ...prev, imageUrl: ev.target?.result }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              {editingItem.imageUrl && (
+                <div className="mt-2 flex items-center gap-3 p-2 rounded-xl bg-slate-950 border border-slate-800">
+                  <img
+                    src={editingItem.imageUrl}
+                    alt="Preview"
+                    className="w-12 h-12 rounded-lg object-cover border border-slate-700"
+                  />
+                  <span className="text-[11px] text-slate-400 truncate">
+                    {editingItem.imageUrl.startsWith('data:')
+                      ? 'Local photo attached (Ready to save)'
+                      : editingItem.imageUrl}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button

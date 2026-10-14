@@ -6,6 +6,7 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard.jsx';
 import CommitteeAdminDashboard from './pages/CommitteeAdminDashboard.jsx';
 import TeamDashboard from './pages/TeamDashboard.jsx';
 import ProjectorView from './pages/ProjectorView.jsx';
+import PlayersDirectoryPage from './pages/PlayersDirectoryPage.jsx';
 
 export default function App() {
   return (
@@ -18,6 +19,8 @@ export default function App() {
           <Route path="/admin/auction/:auctionId" element={<CommitteeAdminDashboard />} />
           <Route path="/team/:auctionId" element={<TeamDashboard />} />
           <Route path="/projector/:auctionId" element={<ProjectorView />} />
+          <Route path="/players/:auctionId" element={<PlayersDirectoryPage />} />
+          <Route path="/auction/:auctionId/players" element={<PlayersDirectoryPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

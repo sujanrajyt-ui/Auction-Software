@@ -9,11 +9,16 @@ import {
   LogOut,
   Shield,
   Gavel,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-react';
 import {
   generateCrestSvgDataUri,
   generateItemSvgDataUri,
+  generateCricketAvatarSvgDataUri,
+  CRICKETER_VERIFIED_IMAGES,
+  IPL_PLAYER_STATS,
+  cleanPlayerKey,
   AUCTION_STATES,
   getPlayerStats,
   isOverseasPlayer
@@ -89,25 +94,57 @@ export function ItemImage({
 }) {
   const resolvedName = item?.name || name || 'Item';
   const resolvedPool = item?.poolName || poolName || 'Pool';
-  const initialSrc = item?.imageUrl || imageUrl;
+  const cleanKey = cleanPlayerKey(resolvedName);
 
-  const fallbackSvg = generateItemSvgDataUri({
-    name: resolvedName,
-    pool: resolvedPool,
-    accentColor
-  });
+  const isCricket = Boolean(
+    IPL_PLAYER_STATS[cleanKey] ||
+    CRICKETER_VERIFIED_IMAGES[cleanKey] ||
+    String(resolvedPool).toLowerCase().match(/batsm|bowler|wicket|all-rounder|uncapped|marquee|cricket|ipl/)
+  );
+
+  const verifiedCricketerImg = isCricket ? CRICKETER_VERIFIED_IMAGES[cleanKey] || null : null;
+  const rawSrc = item?.imageUrl || imageUrl || null;
+
+  // If rawSrc is empty, generic ui-avatar, or if we have a verified cricketer photo, use the verified photo
+  const isGeneric = !rawSrc || rawSrc.includes('ui-avatars.com') || rawSrc.startsWith('data:image/svg+xml');
+  const initialSrc = (verifiedCricketerImg && isGeneric)
+    ? verifiedCricketerImg
+    : (rawSrc || verifiedCricketerImg);
+
+  const fallbackSvg = isCricket
+    ? generateCricketAvatarSvgDataUri({
+        name: resolvedName,
+        role: resolvedPool,
+        accentColor
+      })
+    : generateItemSvgDataUri({
+        name: resolvedName,
+        pool: resolvedPool,
+        accentColor
+      });
 
   const [src, setSrc] = useState(initialSrc || fallbackSvg);
+  const [triedVerified, setTriedVerified] = useState(false);
 
   useEffect(() => {
     setSrc(initialSrc || fallbackSvg);
+    setTriedVerified(false);
   }, [initialSrc, fallbackSvg]);
+
+  const handleError = () => {
+    if (verifiedCricketerImg && !triedVerified && src !== verifiedCricketerImg) {
+      setTriedVerified(true);
+      setSrc(verifiedCricketerImg);
+    } else {
+      setSrc(fallbackSvg);
+    }
+  };
 
   return (
     <img
       src={src}
       alt={resolvedName}
-      onError={() => setSrc(fallbackSvg)}
+      onError={handleError}
       className={`bg-slate-900 border border-slate-800 ${className}`}
     />
   );
@@ -311,14 +348,25 @@ export function VistaHeader({
           {rightActions}
 
           {auction && (
-            <button
-              type="button"
-              onClick={openProjectorWindow}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/35 text-indigo-300 border border-indigo-500/40 text-xs font-bold transition-all cursor-pointer"
-            >
-              <Tv className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Live Projector</span>
-            </button>
+            <>
+              <Link
+                to={`/players/${auction.id}`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/35 text-xs font-bold transition-all cursor-pointer"
+                title="View & Search all Players in the Auction Pool"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Players Pool</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={openProjectorWindow}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/35 text-indigo-300 border border-indigo-500/40 text-xs font-bold transition-all cursor-pointer"
+              >
+                <Tv className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Live Projector</span>
+              </button>
+            </>
           )}
 
           <SoundControl />

@@ -1,9 +1,10 @@
-import dns from 'node:dns';
 import {
   BUILTIN_LOGOS,
   findBuiltInLogo,
   generateCrestSvgDataUri,
   generateItemSvgDataUri,
+  generateCricketAvatarSvgDataUri,
+  CRICKETER_VERIFIED_IMAGES,
   IPL_PLAYER_STATS,
   FOOTBALL_PLAYER_STATS
 } from '../shared/constants.js';
@@ -186,6 +187,21 @@ function matchesSportText(text, sportContext) {
   if (!text) return false;
   const lower = String(text).toLowerCase();
   if (sportContext === 'CRICKET') {
+    const hasNegative =
+      lower.includes('film director') ||
+      lower.includes('bollywood actor') ||
+      lower.includes('film producer') ||
+      lower.includes('screenwriter') ||
+      lower.includes('politician') ||
+      lower.includes('chief minister') ||
+      lower.includes('member of parliament') ||
+      lower.includes('author of') ||
+      lower.includes('novelist') ||
+      lower.includes('field hockey') ||
+      lower.includes('ice hockey');
+    if (hasNegative && !lower.includes('cricketer') && !lower.includes('played cricket') && !lower.includes('indian premier league')) {
+      return false;
+    }
     return (
       lower.includes('cricket') ||
       lower.includes('ipl') ||
@@ -409,7 +425,15 @@ export async function resolveItemImage({ name, pool = 'General', skipUrl = null,
     return generateItemSvgDataUri({ name: 'Item', pool });
   }
 
+  const cleanName = sanitizeSearchName(name);
+  const cleanKey = cleanName.toLowerCase();
+  const sportContext = detectSportContext(cleanKey, pool);
   const effectiveSkip = isRealOnlineImage(skipUrl) ? skipUrl : null;
+
+  // Step 0: Check curated 100% verified cricketer library first!
+  if (sportContext === 'CRICKET' && CRICKETER_VERIFIED_IMAGES[cleanKey] && !effectiveSkip) {
+    return CRICKETER_VERIFIED_IMAGES[cleanKey];
+  }
 
   // Step 1: Primary image search (Wikipedia with strict cricketer/footballer verification)
   const wikiImg = await searchWikipediaImage(name, effectiveSkip, pool);
@@ -430,6 +454,9 @@ export async function resolveItemImage({ name, pool = 'General', skipUrl = null,
 
   // If effectiveSkip was set and no alternative image existed, try without skip so we still return a real photo
   if (effectiveSkip) {
+    if (sportContext === 'CRICKET' && CRICKETER_VERIFIED_IMAGES[cleanKey]) {
+      return CRICKETER_VERIFIED_IMAGES[cleanKey];
+    }
     const primaryWiki = await searchWikipediaImage(name, null, pool);
     if (primaryWiki && isSuitableImageUrl(primaryWiki)) return primaryWiki;
     const primarySports = await searchSportsDbImage(name, 'player', null, pool);
@@ -441,7 +468,11 @@ export async function resolveItemImage({ name, pool = 'General', skipUrl = null,
     return existingUrl;
   }
 
-  // Step 3: Generic high-contrast Vista placeholder
+  // Step 3: Authentic Cricket Avatar or Generic high-contrast Vista placeholder
+  if (sportContext === 'CRICKET') {
+    return generateCricketAvatarSvgDataUri({ name, role: pool });
+  }
+
   return generateItemSvgDataUri({ name, pool });
 }
 

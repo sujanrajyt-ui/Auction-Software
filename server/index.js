@@ -19,7 +19,7 @@ import {
   getHydratedAuction
 } from './db.js';
 import { ensureSeedData, createAuctionInstance } from './seed.js';
-import { resolveItemImage, resolveTeamIdentity } from './imageResolver.js';
+import { resolveItemImage, resolveTeamIdentity, isRealOnlineImage } from './imageResolver.js';
 import { syncFromNeonIfNeeded, syncToNeon, isNeonEnabled } from './neonSync.js';
 import {
   AUCTION_STATES,
@@ -69,6 +69,75 @@ function removeRetainedPlayerFromAuctionItems(auctionId, playerName) {
     }
   }
   return removed;
+}
+
+export function deduplicateAuctionItems(auctionId) {
+  const items = db
+    .prepare('SELECT * FROM items WHERE auctionId = ? ORDER BY queueOrder ASC, createdAt ASC')
+    .all(auctionId);
+
+  const groups = new Map();
+  for (const it of items) {
+    const norm = normalizePlayerName(it.name);
+    if (!norm) continue;
+    if (!groups.has(norm)) {
+      groups.set(norm, []);
+    }
+    groups.get(norm).push(it);
+  }
+
+  let removedCount = 0;
+  const removedNames = [];
+
+  runTransaction(() => {
+    for (const [norm, group] of groups.entries()) {
+      if (group.length <= 1) continue;
+
+      // Priority ranking:
+      // 1. SOLD or RETAINED items (+1000)
+      // 2. ACTIVE items (+500)
+      // 3. Real online headshots (+50)
+      // 4. Custom refreshed career stats (+20)
+      // 5. Earlier queueOrder / createdAt
+      group.sort((a, b) => {
+        const scoreA =
+          (a.status === 'SOLD' || a.status === 'RETAINED' ? 1000 : a.status === 'ACTIVE' ? 500 : 0) +
+          (isRealOnlineImage(a.imageUrl) ? 50 : 0) +
+          (a.statsJson ? 20 : 0);
+        const scoreB =
+          (b.status === 'SOLD' || b.status === 'RETAINED' ? 1000 : b.status === 'ACTIVE' ? 500 : 0) +
+          (isRealOnlineImage(b.imageUrl) ? 50 : 0) +
+          (b.statsJson ? 20 : 0);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return a.queueOrder - b.queueOrder;
+      });
+
+      const primary = group[0];
+      const duplicates = group.slice(1);
+
+      for (const dup of duplicates) {
+        if (dup.status !== 'SOLD' && dup.status !== 'RETAINED') {
+          db.prepare('DELETE FROM bids WHERE itemId = ?').run(dup.id);
+          db.prepare('DELETE FROM items WHERE id = ?').run(dup.id);
+          removedCount++;
+          if (!removedNames.includes(dup.name)) {
+            removedNames.push(dup.name);
+          }
+        }
+      }
+    }
+
+    if (removedCount > 0) {
+      const remainingQueued = db
+        .prepare("SELECT id FROM items WHERE auctionId = ? AND status = 'QUEUED' ORDER BY queueOrder ASC, createdAt ASC")
+        .all(auctionId);
+      remainingQueued.forEach((it, idx) => {
+        db.prepare('UPDATE items SET queueOrder = ? WHERE id = ?').run(idx + 1, it.id);
+      });
+    }
+  });
+
+  return { removedCount, removedNames };
 }
 
 // Initialize DB & seed default data if needed
@@ -2403,6 +2472,18 @@ app.post('/api/auctions/:auctionId/items', requireAuctionAdmin, async (req, res)
     });
   }
 
+  // Enforce duplicate prevention: check if player already exists in this auction
+  const normNewName = normalizePlayerName(name);
+  const existingItem = db
+    .prepare('SELECT id, name, status FROM items WHERE auctionId = ?')
+    .all(auctionId)
+    .find(it => normalizePlayerName(it.name) === normNewName);
+  if (existingItem) {
+    return res.status(400).json({
+      error: `Player "${existingItem.name}" is already in this auction (${existingItem.status}). Duplicate prevented.`
+    });
+  }
+
   let resolvedPool = null;
   if (poolId) {
     resolvedPool = db
@@ -2508,6 +2589,15 @@ app.post('/api/auctions/:auctionId/items/bulk', requireAuctionAdmin, async (req,
   const validated = [];
   const errors = [];
 
+  // Deduplicate incoming rows against each other and against existing items
+  const seenNormsInBatch = new Set();
+  const existingNormsInDb = new Set(
+    db
+      .prepare('SELECT name FROM items WHERE auctionId = ?')
+      .all(auctionId)
+      .map(it => normalizePlayerName(it.name))
+  );
+
   items.forEach((row, idx) => {
     const itemName = String(row.name || row.Name || row.player || row.Player || '').trim();
     const poolName = String(
@@ -2520,6 +2610,17 @@ app.post('/api/auctions/:auctionId/items/bulk', requireAuctionAdmin, async (req,
       errors.push(`Row ${idx + 1}: Missing Name`);
       return;
     }
+    const norm = normalizePlayerName(itemName);
+    if (seenNormsInBatch.has(norm)) {
+      errors.push(`Row ${idx + 1} (${itemName}): Duplicate in import file — skipped`);
+      return;
+    }
+    if (existingNormsInDb.has(norm)) {
+      errors.push(`Row ${idx + 1} (${itemName}): Player already exists in auction pool — skipped duplicate`);
+      return;
+    }
+    seenNormsInBatch.add(norm);
+
     if (Number.isNaN(basePrice) || basePrice <= 0) {
       errors.push(`Row ${idx + 1} (${itemName}): Invalid Base Price "${rawPrice}"`);
       return;
@@ -2606,6 +2707,8 @@ app.post('/api/auctions/:auctionId/items/bulk', requireAuctionAdmin, async (req,
       newValue: { importedCount: validated.length, warningsCount: errors.length }
     });
   });
+
+  deduplicateAuctionItems(auctionId);
 
   broadcastAuctionState(auctionId);
   res.json({
@@ -2888,6 +2991,61 @@ app.post('/api/auctions/:auctionId/items/:itemId/refresh-image', requireAuctionA
 
   broadcastAuctionState(auctionId);
   res.json({ auction: getHydratedAuction(auctionId), imageUrl: newImageUrl });
+});
+
+// Section 12: Manual Image Upload for Player (File Data URI or Web URL)
+app.post('/api/auctions/:auctionId/items/:itemId/upload-image', requireAuctionAdmin, (req, res) => {
+  const { auctionId, itemId } = req.params;
+  const { imageUrl } = req.body || {};
+  if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.trim()) {
+    return res.status(400).json({ error: 'Image URL or file data is required.' });
+  }
+
+  const item = db.prepare('SELECT * FROM items WHERE id = ? AND auctionId = ?').get(itemId, auctionId);
+  if (!item) return res.status(404).json({ error: 'Item not found.' });
+
+  const finalImg = imageUrl.trim();
+  const now = new Date().toISOString();
+  db.prepare('UPDATE items SET imageUrl = ?, updatedAt = ? WHERE id = ?').run(finalImg, now, itemId);
+
+  recordAudit({
+    auctionId,
+    user: req.user,
+    action: 'Player image manually uploaded',
+    entityType: 'ITEM',
+    entityId: itemId,
+    entityName: item.name,
+    previousValue: { imageUrl: item.imageUrl },
+    newValue: { imageUrl: finalImg.startsWith('data:') ? '[Uploaded Image File]' : finalImg }
+  });
+
+  broadcastAuctionState(auctionId);
+  res.json({ success: true, imageUrl: finalImg, auction: getHydratedAuction(auctionId) });
+});
+
+// Section 11: Auto Duplicate Cleanup Endpoint
+app.post('/api/auctions/:auctionId/items/deduplicate', requireAuctionAdmin, (req, res) => {
+  const { auctionId } = req.params;
+  const result = deduplicateAuctionItems(auctionId);
+  if (result.removedCount > 0) {
+    recordAudit({
+      auctionId,
+      user: req.user,
+      action: 'Automatic Duplicate Cleaned',
+      entityType: 'ITEM',
+      entityId: auctionId,
+      entityName: `${result.removedCount} duplicates removed`,
+      previousValue: null,
+      newValue: { removedCount: result.removedCount, removedNames: result.removedNames }
+    });
+    broadcastAuctionState(auctionId);
+  }
+  res.json({
+    success: true,
+    removedCount: result.removedCount,
+    removedNames: result.removedNames,
+    auction: getHydratedAuction(auctionId)
+  });
 });
 
 // Delete Item
