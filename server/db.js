@@ -9,7 +9,8 @@ import {
   BUILTIN_LOGOS,
   calculateNextBid,
   getIncrementForAmount,
-  normalizePlayerName
+  normalizePlayerName,
+  getPlayerStats
 } from '../shared/constants.js';
 
 const DEFAULT_DATA_DIR = process.env.VERCEL
@@ -500,6 +501,10 @@ export function getHydratedAuction(auctionId, options = { includePrivateRetentio
         } catch {
           parsedStats = null;
         }
+      }
+      if (!parsedStats || parsedStats.sport === 'IPL') {
+        const fresh = getPlayerStats(item, auction);
+        if (fresh) parsedStats = fresh;
       }
       return {
         ...item,

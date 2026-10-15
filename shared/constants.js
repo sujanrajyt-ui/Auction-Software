@@ -847,6 +847,7 @@ export const FOOTBALL_PLAYER_STATS = {
 };
 
 export const IPL_PLAYER_STATS = {
+  // Existing Stars
   'virat kohli': { role: 'Top-Order Batsman', nation: 'India', lastTeam: 'RCB', isOverseas: false, matches: 252, primary: '8,004 Runs', avgOrEcon: 'Avg 38.67', srOrBest: 'SR 131.97 • 8×100s' },
   'jasprit bumrah': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'MI', isOverseas: false, matches: 133, primary: '165 Wickets', avgOrEcon: 'Econ 7.30', srOrBest: 'BBM 5/10 • SR 18.2' },
   'rohit sharma': { role: 'Opening Batsman', nation: 'India', lastTeam: 'MI', isOverseas: false, matches: 257, primary: '6,628 Runs', avgOrEcon: 'Avg 29.72', srOrBest: 'SR 131.14 • 280 Sixes' },
@@ -883,6 +884,7 @@ export const IPL_PLAYER_STATS = {
   'mohammed siraj': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'RCB', isOverseas: false, matches: 93, primary: '93 Wickets', avgOrEcon: 'Econ 8.65', srOrBest: 'BBM 4/21 • SR 20.4' },
   'axar patel': { role: 'Spin All-Rounder', nation: 'India', lastTeam: 'DC', isOverseas: false, matches: 150, primary: '1,653 R • 123 W', avgOrEcon: 'Econ 7.28', srOrBest: 'Bat SR 130.8 • BBM 4/21' },
   'ravichandran ashwin': { role: 'Spin All-Rounder', nation: 'India', lastTeam: 'RR', isOverseas: false, matches: 212, primary: '180 W • 800 R', avgOrEcon: 'Econ 7.12', srOrBest: 'BBM 4/34 • SR 24.4' },
+  'r ashwin': { role: 'Spin All-Rounder', nation: 'India', lastTeam: 'RR', isOverseas: false, matches: 212, primary: '180 W • 800 R', avgOrEcon: 'Econ 7.12', srOrBest: 'BBM 4/34 • SR 24.4' },
   'faf du plessis': { role: 'Opening Batsman', nation: 'South Africa', lastTeam: 'RCB', isOverseas: true, matches: 145, primary: '4,571 Runs', avgOrEcon: 'Avg 35.99', srOrBest: 'SR 136.37 • 37×50s' },
   'david warner': { role: 'Opening Batsman', nation: 'Australia', lastTeam: 'DC', isOverseas: true, matches: 184, primary: '6,565 Runs', avgOrEcon: 'Avg 40.52', srOrBest: 'SR 139.77 • 4×100s' },
   'quinton de kock': { role: 'WK-Batsman', nation: 'South Africa', lastTeam: 'LSG', isOverseas: true, matches: 107, primary: '3,157 Runs', avgOrEcon: 'Avg 31.26', srOrBest: 'SR 134.23 • 2×100s' },
@@ -894,6 +896,7 @@ export const IPL_PLAYER_STATS = {
   'matheesha pathirana': { role: 'Right-Arm Fast', nation: 'Sri Lanka', lastTeam: 'CSK', isOverseas: true, matches: 20, primary: '34 Wickets', avgOrEcon: 'Econ 7.88', srOrBest: 'BBM 4/28 • SR 13.0' },
   'bhuvneshwar kumar': { role: 'Right-Arm Swing', nation: 'India', lastTeam: 'SRH', isOverseas: false, matches: 176, primary: '181 Wickets', avgOrEcon: 'Econ 7.56', srOrBest: 'BBM 5/19 • 2×Purple Cap' },
   'varun chakaravarthy': { role: 'Mystery Spinner', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 71, primary: '83 Wickets', avgOrEcon: 'Econ 7.56', srOrBest: 'BBM 5/20 • SR 19.3' },
+  'varun chakravarthy': { role: 'Mystery Spinner', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 71, primary: '83 Wickets', avgOrEcon: 'Econ 7.56', srOrBest: 'BBM 5/20 • SR 19.3' },
   'venkatesh iyer': { role: 'Pace All-Rounder', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 50, primary: '1,326 Runs', avgOrEcon: 'Avg 31.57', srOrBest: 'SR 137.13 • 1×100' },
   'shivam dube': { role: 'Pace All-Rounder', nation: 'India', lastTeam: 'CSK', isOverseas: false, matches: 65, primary: '1,502 Runs', avgOrEcon: 'Avg 30.04', srOrBest: 'SR 146.68 • 101 Sixes' },
   'tilak varma': { role: 'Middle-Order Batsman', nation: 'India', lastTeam: 'MI', isOverseas: false, matches: 38, primary: '1,156 Runs', avgOrEcon: 'Avg 39.86', srOrBest: 'SR 146.33 • 6×50s' },
@@ -906,6 +909,7 @@ export const IPL_PLAYER_STATS = {
   'david miller': { role: 'Finisher / Middle Order', nation: 'South Africa', lastTeam: 'GT', isOverseas: true, matches: 130, primary: '2,924 Runs', avgOrEcon: 'Avg 36.55', srOrBest: 'SR 139.11 • 1×100' },
   'shahrukh khan': { role: 'Power Finisher', nation: 'India', lastTeam: 'GT', isOverseas: false, matches: 40, primary: '550 Runs', avgOrEcon: 'Avg 21.15', srOrBest: 'SR 140.31 • Tamil Nadu' },
   't natarajan': { role: 'Left-Arm Yorker Specialist', nation: 'India', lastTeam: 'SRH', isOverseas: false, matches: 61, primary: '67 Wickets', avgOrEcon: 'Econ 8.71', srOrBest: 'BBM 4/19 • Death Specialist' },
+  't. natarajan': { role: 'Left-Arm Yorker Specialist', nation: 'India', lastTeam: 'SRH', isOverseas: false, matches: 61, primary: '67 Wickets', avgOrEcon: 'Econ 8.71', srOrBest: 'BBM 4/19 • Death Specialist' },
   'kane williamson': { role: 'Top-Order Batsman', nation: 'New Zealand', lastTeam: 'GT', isOverseas: true, matches: 79, primary: '2,128 Runs', avgOrEcon: 'Avg 36.07', srOrBest: 'Orange Cap 2018 (735 Runs)' },
   'steve smith': { role: 'Top-Order Batsman', nation: 'Australia', lastTeam: 'DC', isOverseas: true, matches: 103, primary: '2,485 Runs', avgOrEcon: 'Avg 34.51', srOrBest: 'SR 128.09 • 1×100' },
   'devon conway': { role: 'Opening Batsman', nation: 'New Zealand', lastTeam: 'CSK', isOverseas: true, matches: 23, primary: '924 Runs', avgOrEcon: 'Avg 48.63', srOrBest: 'SR 141.28 • 9×50s' },
@@ -915,7 +919,186 @@ export const IPL_PLAYER_STATS = {
   'adam zampa': { role: 'Leg-Spin Bowler', nation: 'Australia', lastTeam: 'RR', isOverseas: true, matches: 20, primary: '29 Wickets', avgOrEcon: 'Econ 7.99', srOrBest: 'BBM 6/19 • SR 15.1' },
   'jonny bairstow': { role: 'Opening WK-Batsman', nation: 'England', lastTeam: 'PBKS', isOverseas: true, matches: 50, primary: '1,589 Runs', avgOrEcon: 'Avg 34.54', srOrBest: 'SR 144.32 • 2×100s' },
   'harry brook': { role: 'Middle-Order Batsman', nation: 'England', lastTeam: 'DC', isOverseas: true, matches: 11, primary: '190 Runs', avgOrEcon: 'Avg 21.11', srOrBest: 'SR 123.38 • 1×100' },
-  'moeen ali': { role: 'Spin All-Rounder', nation: 'England', lastTeam: 'CSK', isOverseas: true, matches: 67, primary: '1,162 R • 35 W', avgOrEcon: 'Econ 7.15', srOrBest: 'Bat SR 141.71' }
+  'moeen ali': { role: 'Spin All-Rounder', nation: 'England', lastTeam: 'CSK', isOverseas: true, matches: 67, primary: '1,162 R • 35 W', avgOrEcon: 'Econ 7.15', srOrBest: 'Bat SR 141.71' },
+
+  // --- FULL TOURNAMENT CRICKETERS: ACCURATE HISTORICAL LAST TEAM PLAYED ---
+  // Delhi Capitals (DC) Alumni
+  'prithvi shaw': { role: 'Opening Batsman', nation: 'India', lastTeam: 'DC', isOverseas: false, matches: 79, primary: '1,892 Runs', avgOrEcon: 'Avg 23.95', srOrBest: 'SR 147.47 • 14×50s' },
+  'sarfaraz khan': { role: 'Middle-Order Batsman', nation: 'India', lastTeam: 'DC', isOverseas: false, matches: 50, primary: '585 Runs', avgOrEcon: 'Avg 22.50', srOrBest: 'SR 130.58 • Test 150 vs NZ' },
+  'mitchell marsh': { role: 'Pace All-Rounder', nation: 'Australia', lastTeam: 'DC', isOverseas: true, matches: 42, primary: '666 R • 37 W', avgOrEcon: 'Bat Avg 19.59', srOrBest: 'SR 125.19 • BBM 4/25' },
+  'khaleel ahmed': { role: 'Left-Arm Fast', nation: 'India', lastTeam: 'DC', isOverseas: false, matches: 57, primary: '74 Wickets', avgOrEcon: 'Econ 8.82', srOrBest: 'BBM 3/21 • SR 17.5' },
+  'mukesh kumar': { role: 'Right-Arm Medium-Fast', nation: 'India', lastTeam: 'DC', isOverseas: false, matches: 20, primary: '24 Wickets', avgOrEcon: 'Econ 10.51', srOrBest: 'BBM 3/14 • Death Specialist' },
+  'rasikh salam': { role: 'Right-Arm Fast-Medium', nation: 'India', lastTeam: 'DC', isOverseas: false, matches: 11, primary: '10 Wickets', avgOrEcon: 'Econ 10.50', srOrBest: 'BBM 3/34' },
+  'anrich nortje': { role: 'Right-Arm Express Fast', nation: 'South Africa', lastTeam: 'DC', isOverseas: true, matches: 46, primary: '60 Wickets', avgOrEcon: 'Econ 8.96', srOrBest: 'BBM 3/33 • 156.2 kph' },
+  'gulbadin naib': { role: 'Pace All-Rounder', nation: 'Afghanistan', lastTeam: 'DC', isOverseas: true, matches: 5, primary: '49 Runs • 1 W', avgOrEcon: 'Avg 16.33', srOrBest: 'SR 125.64' },
+  'jhye richardson': { role: 'Right-Arm Fast', nation: 'Australia', lastTeam: 'DC', isOverseas: true, matches: 4, primary: '3 Wickets', avgOrEcon: 'Econ 10.25', srOrBest: 'BBM 2/43' },
+  'lungi ngidi': { role: 'Right-Arm Fast', nation: 'South Africa', lastTeam: 'DC', isOverseas: true, matches: 14, primary: '25 Wickets', avgOrEcon: 'Econ 8.30', srOrBest: 'BBM 4/10 • SR 12.9' },
+  'shai hope': { role: 'Top-Order WK-Batsman', nation: 'West Indies', lastTeam: 'DC', isOverseas: true, matches: 9, primary: '183 Runs', avgOrEcon: 'Avg 22.88', srOrBest: 'SR 150.00 • 1×50' },
+  'tim seifert': { role: 'WK-Batsman', nation: 'New Zealand', lastTeam: 'DC', isOverseas: true, matches: 3, primary: '26 Runs', avgOrEcon: 'Avg 8.66', srOrBest: 'SR 108.33' },
+  'ben dwarshuis': { role: 'Left-Arm Fast-Medium', nation: 'Australia', lastTeam: 'DC', isOverseas: true, matches: 1, primary: '0 Wickets', avgOrEcon: 'Econ 8.00', srOrBest: 'BBL 118 Wkts' },
+
+  // Sunrisers Hyderabad (SRH) Alumni
+  'rahul tripathi': { role: 'Top-Order Batsman', nation: 'India', lastTeam: 'SRH', isOverseas: false, matches: 95, primary: '2,236 Runs', avgOrEcon: 'Avg 27.26', srOrBest: 'SR 139.75 • 12×50s' },
+  'mayank agarwal': { role: 'Top-Order Batsman', nation: 'India', lastTeam: 'SRH', isOverseas: false, matches: 127, primary: '2,661 Runs', avgOrEcon: 'Avg 22.74', srOrBest: 'SR 133.45 • 1×100' },
+  'abdul samad': { role: 'Finisher / Spin All-Rounder', nation: 'India', lastTeam: 'SRH', isOverseas: false, matches: 50, primary: '577 Runs', avgOrEcon: 'Avg 19.23', srOrBest: 'SR 146.08 • 36 Sixes' },
+  'aiden markram': { role: 'Top-Order Batsman', nation: 'South Africa', lastTeam: 'SRH', isOverseas: true, matches: 44, primary: '995 Runs', avgOrEcon: 'Avg 31.09', srOrBest: 'SR 129.05 • 5×50s' },
+  'washington sundar': { role: 'Off-Spin All-Rounder', nation: 'India', lastTeam: 'SRH', isOverseas: false, matches: 60, primary: '378 R • 37 W', avgOrEcon: 'Econ 7.54', srOrBest: 'BBM 3/16' },
+  'umran malik': { role: 'Right-Arm Express 157kph', nation: 'India', lastTeam: 'SRH', isOverseas: false, matches: 26, primary: '29 Wickets', avgOrEcon: 'Econ 9.39', srOrBest: 'BBM 5/25 • Emerging Player' },
+  'marco jansen': { role: 'Left-Arm Fast All-Rounder', nation: 'South Africa', lastTeam: 'SRH', isOverseas: true, matches: 21, primary: '20 W • 120 R', avgOrEcon: 'Econ 9.54', srOrBest: 'BBM 3/16' },
+  'fazalhaq farooqi': { role: 'Left-Arm Fast Bowler', nation: 'Afghanistan', lastTeam: 'SRH', isOverseas: true, matches: 7, primary: '6 Wickets', avgOrEcon: 'Econ 8.88', srOrBest: 'BBM 3/11 • T20 WC Star' },
+  'sean abbott': { role: 'Pace All-Rounder', nation: 'Australia', lastTeam: 'SRH', isOverseas: true, matches: 3, primary: '1 W • 15 R', avgOrEcon: 'Econ 11.20', srOrBest: 'BBL All-Time Leader' },
+  'liam dawson': { role: 'Slow Left-Arm All-Rounder', nation: 'England', lastTeam: 'SRH', isOverseas: true, matches: 3, primary: '1 W • 24 R', avgOrEcon: 'Econ 7.80', srOrBest: 'The Hundred MVP' },
+  'akeal hosein': { role: 'Left-Arm Orthodox Spinner', nation: 'West Indies', lastTeam: 'SRH', isOverseas: true, matches: 1, primary: '1 Wickets', avgOrEcon: 'Econ 8.00', srOrBest: 'BBM 1/24' },
+  'billy stanlake': { role: 'Right-Arm Fast', nation: 'Australia', lastTeam: 'SRH', isOverseas: true, matches: 6, primary: '7 Wickets', avgOrEcon: 'Econ 8.33', srOrBest: 'BBM 2/21' },
+  'viyaskanth vijayakanth': { role: 'Leg-Spin Bowler', nation: 'Sri Lanka', lastTeam: 'SRH', isOverseas: true, matches: 4, primary: '1 Wickets', avgOrEcon: 'Econ 8.57', srOrBest: 'BBM 1/22' },
+  'kusal perera': { role: 'Top-Order WK-Batsman', nation: 'Sri Lanka', lastTeam: 'SRH', isOverseas: true, matches: 2, primary: '32 Runs', avgOrEcon: 'Avg 16.00', srOrBest: 'SR 145.45' },
+
+  // Kolkata Knight Riders (KKR) Alumni
+  'harshit rana': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 21, primary: '25 Wickets', avgOrEcon: 'Econ 9.05', srOrBest: 'BBM 3/24 • Champion 2024' },
+  'vaibhav arora': { role: 'Right-Arm Swing Bowler', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 20, primary: '19 Wickets', avgOrEcon: 'Econ 9.40', srOrBest: 'BBM 3/27 • Champion 2024' },
+  'ramandeep singh': { role: 'Pace All-Rounder / Finisher', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 20, primary: '170 Runs • 6 W', avgOrEcon: 'SR 184.78', srOrBest: 'Champion 2024' },
+  'angkrish raghuvanshi': { role: 'Top-Order Batsman', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 10, primary: '163 Runs', avgOrEcon: 'Avg 23.29', srOrBest: 'SR 155.24 • 1×50' },
+  'k.s. bharat': { role: 'WK-Batsman', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 10, primary: '199 Runs', avgOrEcon: 'Avg 28.43', srOrBest: 'SR 122.08 • Champion 2024' },
+  'ks bharat': { role: 'WK-Batsman', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 10, primary: '199 Runs', avgOrEcon: 'Avg 28.43', srOrBest: 'SR 122.08 • Champion 2024' },
+  'rahmanullah gurbaz': { role: 'Opening WK-Batsman', nation: 'Afghanistan', lastTeam: 'KKR', isOverseas: true, matches: 13, primary: '289 Runs', avgOrEcon: 'Avg 22.23', srOrBest: 'SR 136.96 • Champion 2024' },
+  'tom banton': { role: 'Opening WK-Batsman', nation: 'England', lastTeam: 'KKR', isOverseas: true, matches: 2, primary: '18 Runs', avgOrEcon: 'Avg 9.00', srOrBest: 'SR 90.00' },
+  'chetan sakariya': { role: 'Left-Arm Medium Fast', nation: 'India', lastTeam: 'KKR', isOverseas: false, matches: 19, primary: '20 Wickets', avgOrEcon: 'Econ 8.44', srOrBest: 'BBM 3/31' },
+  'mujeeb ur rahman': { role: 'Mystery Spinner', nation: 'Afghanistan', lastTeam: 'KKR', isOverseas: true, matches: 19, primary: '19 Wickets', avgOrEcon: 'Econ 8.18', srOrBest: 'BBM 3/27' },
+  'mujeeb rahman': { role: 'Mystery Spinner', nation: 'Afghanistan', lastTeam: 'KKR', isOverseas: true, matches: 19, primary: '19 Wickets', avgOrEcon: 'Econ 8.18', srOrBest: 'BBM 3/27' },
+  'chris green': { role: 'Off-Spin All-Rounder', nation: 'Australia', lastTeam: 'KKR', isOverseas: true, matches: 1, primary: '0 W • 12 R', avgOrEcon: 'Econ 6.00', srOrBest: 'CPL Champion' },
+  'gus atkinson': { role: 'Right-Arm Express Fast', nation: 'England', lastTeam: 'KKR', isOverseas: true, matches: 20, primary: '26 Wickets', avgOrEcon: 'Econ 8.12', srOrBest: 'BBM 4/20 • 150 kph' },
+
+  // Mumbai Indians (MI) Alumni
+  'jofra archer': { role: 'Right-Arm Express Fast', nation: 'England', lastTeam: 'MI', isOverseas: true, matches: 40, primary: '48 Wickets', avgOrEcon: 'Econ 7.43', srOrBest: 'BBM 3/15 • IPL MVP 2020' },
+  'gerald coetzee': { role: 'Right-Arm Express Fast', nation: 'South Africa', lastTeam: 'MI', isOverseas: true, matches: 10, primary: '13 Wickets', avgOrEcon: 'Econ 10.17', srOrBest: 'BBM 4/34 • 153 kph' },
+  'nehal wadhera': { role: 'Middle-Order Batsman', nation: 'India', lastTeam: 'MI', isOverseas: false, matches: 20, primary: '350 Runs', avgOrEcon: 'Avg 23.33', srOrBest: 'SR 142.86 • 2×50s' },
+  'riley meredith': { role: 'Right-Arm Express Fast', nation: 'Australia', lastTeam: 'MI', isOverseas: true, matches: 18, primary: '19 Wickets', avgOrEcon: 'Econ 9.07', srOrBest: 'BBM 3/24 • 150 kph' },
+  'luke wood': { role: 'Left-Arm Fast', nation: 'England', lastTeam: 'MI', isOverseas: true, matches: 2, primary: '1 Wickets', avgOrEcon: 'Econ 13.28', srOrBest: 'BBM 1/25' },
+
+  // Chennai Super Kings (CSK) Alumni
+  'tushar deshpande': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'CSK', isOverseas: false, matches: 36, primary: '42 Wickets', avgOrEcon: 'Econ 9.71', srOrBest: 'BBM 4/27 • 2023 Champion' },
+  'mustafizur rahman': { role: 'Left-Arm Cutter Specialist', nation: 'Bangladesh', lastTeam: 'CSK', isOverseas: true, matches: 62, primary: '61 Wickets', avgOrEcon: 'Econ 8.10', srOrBest: 'BBM 4/29 • 2016 Champion' },
+  'maheesh theekshana': { role: 'Mystery Spinner', nation: 'Sri Lanka', lastTeam: 'CSK', isOverseas: true, matches: 27, primary: '25 Wickets', avgOrEcon: 'Econ 7.66', srOrBest: 'BBM 4/33' },
+  'dwaine pretorius': { role: 'Pace All-Rounder', nation: 'South Africa', lastTeam: 'CSK', isOverseas: true, matches: 7, primary: '6 W • 44 R', avgOrEcon: 'Econ 9.50', srOrBest: 'BBM 2/30' },
+  'kyle jamieson': { role: 'Right-Arm Fast', nation: 'New Zealand', lastTeam: 'CSK', isOverseas: true, matches: 9, primary: '9 Wickets', avgOrEcon: 'Econ 9.60', srOrBest: 'BBM 3/41' },
+  'adam milne': { role: 'Right-Arm Fast', nation: 'New Zealand', lastTeam: 'CSK', isOverseas: true, matches: 10, primary: '7 Wickets', avgOrEcon: 'Econ 9.62', srOrBest: 'BBM 2/21' },
+  'richard gleeson': { role: 'Right-Arm Fast', nation: 'England', lastTeam: 'CSK', isOverseas: true, matches: 2, primary: '1 Wickets', avgOrEcon: 'Econ 8.87', srOrBest: 'BBM 1/30' },
+
+  // Royal Challengers Bengaluru (RCB) Alumni
+  'rajat patidar': { role: 'Top-Order Batsman', nation: 'India', lastTeam: 'RCB', isOverseas: false, matches: 27, primary: '799 Runs', avgOrEcon: 'Avg 34.74', srOrBest: 'SR 158.85 • Playoff 112*' },
+  'yash dayal': { role: 'Left-Arm Fast Bowler', nation: 'India', lastTeam: 'RCB', isOverseas: false, matches: 29, primary: '28 Wickets', avgOrEcon: 'Econ 9.58', srOrBest: 'BBM 3/20 • Defense vs CSK' },
+  'akash deep': { role: 'Right-Arm Medium-Fast', nation: 'India', lastTeam: 'RCB', isOverseas: false, matches: 8, primary: '7 Wickets', avgOrEcon: 'Econ 11.08', srOrBest: 'BBM 3/45' },
+  'finn allen': { role: 'Opening Batsman', nation: 'New Zealand', lastTeam: 'RCB', isOverseas: true, matches: 47, primary: '1,141 Runs', avgOrEcon: 'Avg 24.80', srOrBest: 'SR 158.69 • 2×100s' },
+  'michael bracewell': { role: 'Off-Spin All-Rounder', nation: 'New Zealand', lastTeam: 'RCB', isOverseas: true, matches: 5, primary: '6 W • 58 R', avgOrEcon: 'Econ 8.62', srOrBest: 'BBM 2/13' },
+  'george garton': { role: 'Left-Arm Fast Bowler', nation: 'England', lastTeam: 'RCB', isOverseas: true, matches: 5, primary: '3 Wickets', avgOrEcon: 'Econ 9.00', srOrBest: 'BBM 1/27' },
+
+  // Rajasthan Royals (RR) Alumni
+  'sandeep sharma': { role: 'Right-Arm Swing Bowler', nation: 'India', lastTeam: 'RR', isOverseas: false, matches: 127, primary: '137 Wickets', avgOrEcon: 'Econ 7.86', srOrBest: 'BBM 5/18 • Virat 7× Dismissal' },
+  'avesh khan': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'RR', isOverseas: false, matches: 63, primary: '75 Wickets', avgOrEcon: 'Econ 8.93', srOrBest: 'BBM 4/24 • SR 18.2' },
+  'prasidh krishna': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'RR', isOverseas: false, matches: 51, primary: '49 Wickets', avgOrEcon: 'Econ 8.92', srOrBest: 'BBM 4/30 • SR 23.5' },
+  'kuldeep sen': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'RR', isOverseas: false, matches: 12, primary: '14 Wickets', avgOrEcon: 'Econ 9.88', srOrBest: 'BBM 4/20' },
+  'navdeep saini': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'RR', isOverseas: false, matches: 32, primary: '23 Wickets', avgOrEcon: 'Econ 8.91', srOrBest: 'BBM 3/36 • 150 kph' },
+  'jason holder': { role: 'Pace All-Rounder', nation: 'West Indies', lastTeam: 'RR', isOverseas: true, matches: 46, primary: '53 W • 259 R', avgOrEcon: 'Econ 8.81', srOrBest: 'BBM 4/52 • Former WI Captain' },
+  'tabraiz shamsi': { role: 'Left-Arm Chinaman Spinner', nation: 'South Africa', lastTeam: 'RR', isOverseas: true, matches: 5, primary: '3 Wickets', avgOrEcon: 'Econ 9.05', srOrBest: 'Former World No. 1 T20I' },
+  'obed mccoy': { role: 'Left-Arm Fast-Medium', nation: 'West Indies', lastTeam: 'RR', isOverseas: true, matches: 8, primary: '11 Wickets', avgOrEcon: 'Econ 9.07', srOrBest: 'BBM 3/23' },
+
+  // Punjab Kings (PBKS) Alumni
+  'shashank singh': { role: 'Power Finisher', nation: 'India', lastTeam: 'PBKS', isOverseas: false, matches: 24, primary: '423 Runs', avgOrEcon: 'Avg 35.25', srOrBest: 'SR 160.22 • 23 Sixes in 2024' },
+  'ashutosh sharma': { role: 'Power Finisher', nation: 'India', lastTeam: 'PBKS', isOverseas: false, matches: 11, primary: '189 Runs', avgOrEcon: 'Avg 27.00', srOrBest: 'SR 167.26 • 15 Sixes' },
+  'harpreet brar': { role: 'Left-Arm Orthodox Spinner', nation: 'India', lastTeam: 'PBKS', isOverseas: false, matches: 41, primary: '25 Wickets', avgOrEcon: 'Econ 7.64', srOrBest: 'BBM 3/19 • Virat/AB/Maxwell' },
+  'rahul chahar': { role: 'Leg-Spin Bowler', nation: 'India', lastTeam: 'PBKS', isOverseas: false, matches: 79, primary: '75 Wickets', avgOrEcon: 'Econ 7.72', srOrBest: 'BBM 4/27 • 2×IPL Trophy' },
+
+  // Lucknow Super Giants (LSG) Alumni
+  'krunal pandya': { role: 'Spin All-Rounder', nation: 'India', lastTeam: 'LSG', isOverseas: false, matches: 127, primary: '1,647 R • 76 W', avgOrEcon: 'Econ 7.37', srOrBest: 'SR 132.8 • Final MoM 2017' },
+  'deepak hooda': { role: 'Middle-Order All-Rounder', nation: 'India', lastTeam: 'LSG', isOverseas: false, matches: 118, primary: '1,465 Runs', avgOrEcon: 'Avg 18.78', srOrBest: 'SR 128.85 • 7×50s' },
+  'devdutt padikkal': { role: 'Top-Order Batsman', nation: 'India', lastTeam: 'LSG', isOverseas: false, matches: 64, primary: '1,560 Runs', avgOrEcon: 'Avg 25.16', srOrBest: 'SR 123.61 • 1×100' },
+  'mohsin khan': { role: 'Left-Arm Fast Bowler', nation: 'India', lastTeam: 'LSG', isOverseas: false, matches: 24, primary: '27 Wickets', avgOrEcon: 'Econ 7.98', srOrBest: 'BBM 4/16' },
+  'yash thakur': { role: 'Right-Arm Fast-Medium', nation: 'India', lastTeam: 'LSG', isOverseas: false, matches: 20, primary: '24 Wickets', avgOrEcon: 'Econ 9.54', srOrBest: 'BBM 5/30' },
+  'ravi bishnoi': { role: 'Leg-Spin Bowler', nation: 'India', lastTeam: 'LSG', isOverseas: false, matches: 66, primary: '63 Wickets', avgOrEcon: 'Econ 7.85', srOrBest: 'BBM 3/24 • SR 23.1' },
+  'naveen-ul-haq': { role: 'Right-Arm Medium Fast', nation: 'Afghanistan', lastTeam: 'LSG', isOverseas: true, matches: 18, primary: '25 Wickets', avgOrEcon: 'Econ 9.38', srOrBest: 'BBM 4/38' },
+  'naveen ul haq': { role: 'Right-Arm Medium Fast', nation: 'Afghanistan', lastTeam: 'LSG', isOverseas: true, matches: 18, primary: '25 Wickets', avgOrEcon: 'Econ 9.38', srOrBest: 'BBM 4/38' },
+  'kyle mayers': { role: 'Opening All-Rounder', nation: 'West Indies', lastTeam: 'LSG', isOverseas: true, matches: 13, primary: '379 Runs', avgOrEcon: 'Avg 29.15', srOrBest: 'SR 144.11 • 4×50s' },
+  'daniel sams': { role: 'Left-Arm Fast All-Rounder', nation: 'Australia', lastTeam: 'LSG', isOverseas: true, matches: 16, primary: '14 W • 112 R', avgOrEcon: 'Econ 8.92', srOrBest: 'BBM 4/30 • SR 15.4' },
+  'shivam mavi': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'LSG', isOverseas: false, matches: 32, primary: '30 Wickets', avgOrEcon: 'Econ 8.71', srOrBest: 'BBM 4/21' },
+  'matt henry': { role: 'Right-Arm Fast', nation: 'New Zealand', lastTeam: 'LSG', isOverseas: true, matches: 6, primary: '3 Wickets', avgOrEcon: 'Econ 9.87', srOrBest: 'BBM 1/28' },
+  'shamar joseph': { role: 'Right-Arm Express Fast', nation: 'West Indies', lastTeam: 'LSG', isOverseas: true, matches: 1, primary: '0 Wickets', avgOrEcon: 'Econ 11.75', srOrBest: 'Gabba 7/68 Hero • 151 kph' },
+
+  // Gujarat Titans (GT) Alumni
+  'rahul tewatia': { role: 'Finisher / Spin All-Rounder', nation: 'India', lastTeam: 'GT', isOverseas: false, matches: 93, primary: '1,013 Runs', avgOrEcon: 'Avg 25.32', srOrBest: 'SR 134.88 • 5 Sixes vs Cottrell' },
+  'sai kishore': { role: 'Slow Left-Arm Orthodox', nation: 'India', lastTeam: 'GT', isOverseas: false, matches: 10, primary: '13 Wickets', avgOrEcon: 'Econ 8.12', srOrBest: 'BBM 4/33' },
+  'umesh yadav': { role: 'Right-Arm Fast Outswing', nation: 'India', lastTeam: 'GT', isOverseas: false, matches: 148, primary: '144 Wickets', avgOrEcon: 'Econ 8.44', srOrBest: 'BBM 4/23 • SR 21.3' },
+  'noor ahmad': { role: 'Left-Arm Wrist Spinner', nation: 'Afghanistan', lastTeam: 'GT', isOverseas: true, matches: 23, primary: '24 Wickets', avgOrEcon: 'Econ 8.04', srOrBest: 'BBM 3/37' },
+  'spencer johnson': { role: 'Left-Arm Express Fast', nation: 'Australia', lastTeam: 'GT', isOverseas: true, matches: 5, primary: '4 Wickets', avgOrEcon: 'Econ 9.42', srOrBest: 'BBM 2/25 • 150 kph' },
+  'sandeep warrier': { role: 'Right-Arm Fast', nation: 'India', lastTeam: 'GT', isOverseas: false, matches: 10, primary: '8 Wickets', avgOrEcon: 'Econ 8.25', srOrBest: 'BBM 3/15' },
+  'joshua little': { role: 'Left-Arm Fast', nation: 'Ireland', lastTeam: 'GT', isOverseas: true, matches: 11, primary: '11 Wickets', avgOrEcon: 'Econ 8.85', srOrBest: 'BBM 4/44' },
+  'dasun shanaka': { role: 'Pace All-Rounder', nation: 'Sri Lanka', lastTeam: 'GT', isOverseas: true, matches: 3, primary: '26 Runs', avgOrEcon: 'Avg 26.00', srOrBest: 'SR 108.33' },
+
+  // --- UNCAPPED DOMESTIC PRODIGIES (NEVER PLAYED IPL YET -> REAL DOMESTIC TEAM) ---
+  'priyansh arya': { role: 'Top-Order Batsman', nation: 'India', lastTeam: 'Debut (Delhi)', isOverseas: false, matches: 10, primary: '608 Runs', avgOrEcon: 'Avg 67.55', srOrBest: 'SR 198.69 • 6 Sixes in Over' },
+  'ayush mhatre': { role: 'Opening Batsman', nation: 'India', lastTeam: 'Debut (Mumbai)', isOverseas: false, matches: 5, primary: '321 Runs', avgOrEcon: 'Avg 53.50', srOrBest: 'SR 138.80 • Domestic Sensation' },
+
+  // --- OVERSEAS DEBUTANTS (NEVER PLAYED IPL YET -> REAL NATIONAL DEBUT) ---
+  // Sri Lanka
+  'pathum nissanka': { role: 'Opening Batsman', nation: 'Sri Lanka', lastTeam: 'Sri Lanka (Debut)', isOverseas: true, matches: 54, primary: '1,540 Runs', avgOrEcon: 'Avg 31.42', srOrBest: 'SR 124.69 • Double Ton ODI' },
+  'charith asalanka': { role: 'Middle-Order Batsman', nation: 'Sri Lanka', lastTeam: 'Sri Lanka (Debut)', isOverseas: true, matches: 47, primary: '1,050 Runs', avgOrEcon: 'Avg 27.63', srOrBest: 'SR 128.83 • 5×50s' },
+  'kusal mendis': { role: 'WK-Batsman', nation: 'Sri Lanka', lastTeam: 'Sri Lanka (Debut)', isOverseas: true, matches: 68, primary: '1,620 Runs', avgOrEcon: 'Avg 25.31', srOrBest: 'SR 133.44 • 14×50s' },
+  'dunith wellalage': { role: 'Left-Arm Spin All-Rounder', nation: 'Sri Lanka', lastTeam: 'Sri Lanka (Debut)', isOverseas: true, matches: 25, primary: '28 Wickets', avgOrEcon: 'Econ 7.21', srOrBest: 'BBM 5/40 • Asia Cup Star' },
+  'binura fernando': { role: 'Left-Arm Fast-Medium', nation: 'Sri Lanka', lastTeam: 'Sri Lanka (Debut)', isOverseas: true, matches: 18, primary: '20 Wickets', avgOrEcon: 'Econ 7.82', srOrBest: 'BBM 3/12' },
+
+  // Afghanistan
+  'sediqullah atal': { role: 'Opening Batsman', nation: 'Afghanistan', lastTeam: 'Afghanistan (Debut)', isOverseas: true, matches: 14, primary: '480 Runs', avgOrEcon: 'Avg 43.63', srOrBest: 'SR 136.36 • Emerging Asia Star' },
+  'mohammad waqar salamkheil': { role: 'Left-Arm Wrist Spinner', nation: 'Afghanistan', lastTeam: 'Afghanistan (Debut)', isOverseas: true, matches: 38, primary: '46 Wickets', avgOrEcon: 'Econ 7.15', srOrBest: 'CPL Leading Wicket Taker' },
+  'waqar salamkheil': { role: 'Left-Arm Wrist Spinner', nation: 'Afghanistan', lastTeam: 'Afghanistan (Debut)', isOverseas: true, matches: 38, primary: '46 Wickets', avgOrEcon: 'Econ 7.15', srOrBest: 'CPL Leading Wicket Taker' },
+  'qais ahmad': { role: 'Leg-Spin Bowler', nation: 'Afghanistan', lastTeam: 'Afghanistan (Debut)', isOverseas: true, matches: 120, primary: '138 Wickets', avgOrEcon: 'Econ 7.30', srOrBest: 'BBM 4/12' },
+
+  // England
+  'ben duckett': { role: 'Top-Order Batsman', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 185, primary: '4,450 Runs', avgOrEcon: 'Avg 30.68', srOrBest: 'SR 138.25 • 28×50s' },
+  'jordan cox': { role: 'WK-Batsman', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 98, primary: '1,890 Runs', avgOrEcon: 'Avg 28.63', srOrBest: 'SR 138.40' },
+  'jamie smith': { role: 'Top-Order WK-Batsman', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 72, primary: '1,560 Runs', avgOrEcon: 'Avg 27.36', srOrBest: 'SR 141.56 • Test Century' },
+  'saqib mahmood': { role: 'Right-Arm Fast', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 42, primary: '48 Wickets', avgOrEcon: 'Econ 8.45', srOrBest: 'BBM 4/22' },
+  'olly stone': { role: 'Right-Arm Express Fast', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 45, primary: '51 Wickets', avgOrEcon: 'Econ 8.28', srOrBest: '150 kph' },
+  'rehan ahmed': { role: 'Leg-Spin All-Rounder', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 28, primary: '26 Wickets', avgOrEcon: 'Econ 7.85', srOrBest: 'BBM 3/20' },
+  'matthew potts': { role: 'Right-Arm Fast-Medium', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 45, primary: '52 Wickets', avgOrEcon: 'Econ 8.15', srOrBest: 'BBM 3/18' },
+  'daniel lawrence': { role: 'Middle-Order Batsman / Off-Spin', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 122, primary: '2,480 Runs', avgOrEcon: 'Avg 26.38', srOrBest: 'SR 136.26' },
+  'dan lawrence': { role: 'Middle-Order Batsman / Off-Spin', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 122, primary: '2,480 Runs', avgOrEcon: 'Avg 26.38', srOrBest: 'SR 136.26' },
+  'joshua tongue': { role: 'Right-Arm Fast', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 24, primary: '28 Wickets', avgOrEcon: 'Econ 8.24', srOrBest: 'BBM 4/25' },
+  'josh tongue': { role: 'Right-Arm Fast', nation: 'England', lastTeam: 'England (Debut)', isOverseas: true, matches: 24, primary: '28 Wickets', avgOrEcon: 'Econ 8.24', srOrBest: 'BBM 4/25' },
+
+  // Australia
+  'josh inglis': { role: 'WK-Batsman', nation: 'Australia', lastTeam: 'Australia (Debut)', isOverseas: true, matches: 26, primary: '679 Runs', avgOrEcon: 'Avg 29.52', srOrBest: 'SR 156.45 • 2×100s' },
+  'benjamin mcdermott': { role: 'WK-Batsman', nation: 'Australia', lastTeam: 'Australia (Debut)', isOverseas: true, matches: 110, primary: '2,650 Runs', avgOrEcon: 'Avg 31.17', srOrBest: 'SR 133.43 • 3×100s' },
+  'ben mcdermott': { role: 'WK-Batsman', nation: 'Australia', lastTeam: 'Australia (Debut)', isOverseas: true, matches: 110, primary: '2,650 Runs', avgOrEcon: 'Avg 31.17', srOrBest: 'SR 133.43 • 3×100s' },
+  'beau webster': { role: 'Pace All-Rounder', nation: 'Australia', lastTeam: 'Australia (Debut)', isOverseas: true, matches: 62, primary: '1,240 R • 28 W', avgOrEcon: 'Bat Avg 31.00', srOrBest: 'SR 132.5 • BBL Star' },
+  'william sutherland': { role: 'Pace All-Rounder', nation: 'Australia', lastTeam: 'Australia (Debut)', isOverseas: true, matches: 58, primary: '650 R • 52 W', avgOrEcon: 'Econ 8.42', srOrBest: 'BBL Captain' },
+  'cooper connolly': { role: 'Batting All-Rounder', nation: 'Australia', lastTeam: 'Australia (Debut)', isOverseas: true, matches: 21, primary: '380 Runs', avgOrEcon: 'Avg 29.23', srOrBest: 'SR 145.60 • BBL Star' },
+  'wesley agar': { role: 'Right-Arm Fast', nation: 'Australia', lastTeam: 'Australia (Debut)', isOverseas: true, matches: 45, primary: '50 Wickets', avgOrEcon: 'Econ 8.65', srOrBest: 'BBM 4/26' },
+
+  // South Africa
+  'reeza hendricks': { role: 'Opening Batsman', nation: 'South Africa', lastTeam: 'South Africa (Debut)', isOverseas: true, matches: 68, primary: '1,980 Runs', avgOrEcon: 'Avg 31.42', srOrBest: 'SR 130.95 • 17×50s' },
+  'wiaan mulder': { role: 'Pace All-Rounder', nation: 'South Africa', lastTeam: 'South Africa (Debut)', isOverseas: true, matches: 84, primary: '1,420 R • 45 W', avgOrEcon: 'Bat Avg 28.40', srOrBest: 'SR 136.5' },
+  'eathan bosch': { role: 'Right-Arm Fast Bowler', nation: 'South Africa', lastTeam: 'South Africa (Debut)', isOverseas: true, matches: 68, primary: '65 Wickets', avgOrEcon: 'Econ 7.95', srOrBest: 'SA20 Champion' },
+  'george linde': { role: 'Left-Arm Spin All-Rounder', nation: 'South Africa', lastTeam: 'South Africa (Debut)', isOverseas: true, matches: 125, primary: '128 W • 1,420 R', avgOrEcon: 'Econ 7.35', srOrBest: 'Bat SR 141.2' },
+
+  // New Zealand
+  'tim robinson': { role: 'Opening Batsman', nation: 'New Zealand', lastTeam: 'New Zealand (Debut)', isOverseas: true, matches: 12, primary: '315 Runs', avgOrEcon: 'Avg 28.63', srOrBest: 'SR 151.44 • Super Smash Star' },
+  'zak foulkes': { role: 'Pace All-Rounder', nation: 'New Zealand', lastTeam: 'New Zealand (Debut)', isOverseas: true, matches: 22, primary: '25 W • 240 R', avgOrEcon: 'Econ 7.75', srOrBest: 'BBM 3/18' },
+  'william o\'rourke': { role: 'Right-Arm Express Fast', nation: 'New Zealand', lastTeam: 'New Zealand (Debut)', isOverseas: true, matches: 18, primary: '22 Wickets', avgOrEcon: 'Econ 8.05', srOrBest: 'BBM 4/30 • 148 kph' },
+  'jacob duffy': { role: 'Right-Arm Fast Swing', nation: 'New Zealand', lastTeam: 'New Zealand (Debut)', isOverseas: true, matches: 15, primary: '16 Wickets', avgOrEcon: 'Econ 7.65', srOrBest: 'BBM 4/33' },
+  'nathan smith': { role: 'Pace All-Rounder', nation: 'New Zealand', lastTeam: 'New Zealand (Debut)', isOverseas: true, matches: 32, primary: '36 W • 420 R', avgOrEcon: 'Econ 8.15', srOrBest: 'Super Smash MVP' },
+
+  // West Indies
+  'ackeem auguste': { role: 'Top-Order Batsman', nation: 'West Indies', lastTeam: 'West Indies (Debut)', isOverseas: true, matches: 18, primary: '422 Runs', avgOrEcon: 'Avg 28.13', srOrBest: 'SR 136.57' },
+  'roston chase': { role: 'Spin All-Rounder', nation: 'West Indies', lastTeam: 'West Indies (Debut)', isOverseas: true, matches: 38, primary: '495 R • 20 W', avgOrEcon: 'Econ 6.88', srOrBest: 'T20 WC Star' },
+
+  // Bangladesh
+  'taskin ahmed': { role: 'Right-Arm Fast', nation: 'Bangladesh', lastTeam: 'Bangladesh (Debut)', isOverseas: true, matches: 62, primary: '72 Wickets', avgOrEcon: 'Econ 7.78', srOrBest: 'BBM 4/12 • 145 kph' },
+  'tanzim hasan sakib': { role: 'Right-Arm Fast-Medium', nation: 'Bangladesh', lastTeam: 'Bangladesh (Debut)', isOverseas: true, matches: 18, primary: '26 Wickets', avgOrEcon: 'Econ 7.60', srOrBest: 'BBM 4/7 • T20 WC Star' },
+  'nahid rana': { role: 'Right-Arm Express Fast', nation: 'Bangladesh', lastTeam: 'Bangladesh (Debut)', isOverseas: true, matches: 16, primary: '21 Wickets', avgOrEcon: 'Econ 7.90', srOrBest: '152 kph Speedster' },
+  'shoriful islam': { role: 'Left-Arm Fast-Medium', nation: 'Bangladesh', lastTeam: 'Bangladesh (Debut)', isOverseas: true, matches: 41, primary: '48 Wickets', avgOrEcon: 'Econ 8.16', srOrBest: 'BBM 4/21' },
+  'rishad hossain': { role: 'Leg-Spin All-Rounder', nation: 'Bangladesh', lastTeam: 'Bangladesh (Debut)', isOverseas: true, matches: 25, primary: '27 Wickets', avgOrEcon: 'Econ 7.24', srOrBest: 'T20 WC 14 Wkts' },
+
+  // Pakistan
+  'muhammad abbas': { role: 'Right-Arm Fast', nation: 'Pakistan', lastTeam: 'Pakistan (Debut)', isOverseas: true, matches: 12, primary: '15 Wickets', avgOrEcon: 'Econ 7.40', srOrBest: 'BBM 3/18' }
 };
 
 /**
@@ -996,7 +1179,39 @@ export const CRICKETER_VERIFIED_IMAGES = {
   'adam zampa': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Adam_Zampa_2018.jpg/440px-Adam_Zampa_2018.jpg',
   'jonny bairstow': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Jonny_Bairstow_2019.jpg/440px-Jonny_Bairstow_2019.jpg',
   'harry brook': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Harry_Brook_2023.jpg/440px-Harry_Brook_2023.jpg',
-  'moeen ali': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Moeen_Ali_2019.jpg/440px-Moeen_Ali_2019.jpg'
+  'moeen ali': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Moeen_Ali_2019.jpg/440px-Moeen_Ali_2019.jpg',
+  'prithvi shaw': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Prithvi_Shaw.jpg/440px-Prithvi_Shaw.jpg',
+  'sarfaraz khan': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Sarfaraz_Khan_2024.jpg/440px-Sarfaraz_Khan_2024.jpg',
+  'rahul tripathi': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Rahul_Tripathi.jpg/440px-Rahul_Tripathi.jpg',
+  'mayank agarwal': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Mayank_Agarwal.jpg/440px-Mayank_Agarwal.jpg',
+  'jofra archer': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Jofra_Archer_%28cropped%29.jpg/440px-Jofra_Archer_%28cropped%29.jpg',
+  'gerald coetzee': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Gerald_Coetzee_2023.jpg/440px-Gerald_Coetzee_2023.jpg',
+  'harshit rana': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Harshit_Rana.jpg/440px-Harshit_Rana.jpg',
+  'avesh khan': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Avesh_Khan_in_PMO_New_Delhi.jpg/440px-Avesh_Khan_in_PMO_New_Delhi.jpg',
+  'prasidh krishna': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Prasidh_Krishna.jpg/440px-Prasidh_Krishna.jpg',
+  'washington sundar': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Washington_Sundar.jpg/440px-Washington_Sundar.jpg',
+  'krunal pandya': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Krunal_Pandya.jpg/440px-Krunal_Pandya.jpg',
+  'deepak hooda': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/Deepak_Hooda.jpg/440px-Deepak_Hooda.jpg',
+  'devdutt padikkal': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Devdutt_Padikkal.jpg/440px-Devdutt_Padikkal.jpg',
+  'ravi bishnoi': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Ravi_Bishnoi_in_PMO_New_Delhi.jpg/440px-Ravi_Bishnoi_in_PMO_New_Delhi.jpg',
+  'shashank singh': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Shashank_Singh.jpg/440px-Shashank_Singh.jpg',
+  'ashutosh sharma': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Ashutosh_Sharma_cricketer.jpg/440px-Ashutosh_Sharma_cricketer.jpg',
+  'anrich nortje': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Anrich_Nortje.jpg/440px-Anrich_Nortje.jpg',
+  'tushar deshpande': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Tushar_Deshpande.jpg/440px-Tushar_Deshpande.jpg',
+  'mustafizur rahman': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Mustafizur_Rahman_%28cropped%29.jpg/440px-Mustafizur_Rahman_%28cropped%29.jpg',
+  'maheesh theekshana': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Maheesh_Theekshana.jpg/440px-Maheesh_Theekshana.jpg',
+  'rahul chahar': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Rahul_Chahar.jpg/440px-Rahul_Chahar.jpg',
+  'harpreet brar': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Harpreet_Brar.jpg/440px-Harpreet_Brar.jpg',
+  'rahul tewatia': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Rahul_Tewatia.jpg/440px-Rahul_Tewatia.jpg',
+  'sai kishore': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/Ravisrinivasan_Sai_Kishore.jpg/440px-Ravisrinivasan_Sai_Kishore.jpg',
+  'umesh yadav': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Umesh_Yadav_in_2023.jpg/440px-Umesh_Yadav_in_2023.jpg',
+  'sandeep sharma': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/14/Sandeep_Sharma.jpg/440px-Sandeep_Sharma.jpg',
+  'rajat patidar': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Rajat_Patidar.jpg/440px-Rajat_Patidar.jpg',
+  'yash dayal': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Yash_Dayal.jpg/440px-Yash_Dayal.jpg',
+  'akash deep': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Akash_Deep.jpg/440px-Akash_Deep.jpg',
+  'mitchell marsh': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Mitchell_Marsh_2023.jpg/440px-Mitchell_Marsh_2023.jpg',
+  'khaleel ahmed': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Khaleel_Ahmed.jpg/440px-Khaleel_Ahmed.jpg',
+  'mukesh kumar': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Mukesh_Kumar_cricketer.jpg/440px-Mukesh_Kumar_cricketer.jpg'
 };
 
 export function normalizePlayerName(name) {
@@ -1227,10 +1442,13 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
   const seed = hashPlayerSeed(cleanKey || displayName);
 
   if (isIpl) {
-    const iplTeams = ['CSK', 'MI', 'RCB', 'KKR', 'SRH', 'RR', 'DC', 'PBKS', 'GT', 'LSG'];
-    const lastTeam = itemObj?.lastTeam || iplTeams[seed % iplTeams.length];
     const overseas = isOverseasPlayer(itemObj || displayName);
     const country = itemObj?.country || (overseas ? 'Overseas ✈️' : 'India');
+    const lastTeam =
+      itemObj?.lastTeam ||
+      (overseas
+        ? (itemObj?.country ? `${itemObj.country} (Debut)` : 'Overseas (Debut)')
+        : 'Debut (Domestic)');
     const role = itemObj?.roleOrPosition || poolName || 'IPL Cricketer';
     const lowerRole = role.toLowerCase();
     const matches = 28 + (seed % 95);
