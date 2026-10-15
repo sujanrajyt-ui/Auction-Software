@@ -16,7 +16,8 @@ import {
   Check,
   X,
   UserPlus,
-  Layers
+  Layers,
+  Camera
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { VistaHeader, StatusBadge, TeamLogo } from '../components/Common.jsx';
@@ -775,16 +776,36 @@ export default function SuperAdminDashboard() {
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
-                  Logo URL
+                  Logo Image (Upload File or Enter URL)
                 </label>
-                <input
-                  type="url"
-                  value={logoUrl}
-                  onChange={e => setLogoUrl(e.target.value)}
-                  placeholder="https://..."
-                  required
-                  className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-sm text-white"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={logoUrl}
+                    onChange={e => setLogoUrl(e.target.value)}
+                    placeholder="Paste image URL or click Upload..."
+                    required
+                    className="flex-1 rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-sm text-white"
+                  />
+                  <label className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0 border border-slate-700">
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = ev => {
+                          setLogoUrl(ev.target?.result);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
               <button
                 type="submit"

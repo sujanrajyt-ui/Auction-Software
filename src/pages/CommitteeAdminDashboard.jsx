@@ -123,6 +123,7 @@ export default function CommitteeAdminDashboard() {
   const [newTeamPrimary, setNewTeamPrimary] = useState('#034694');
   const [newTeamSecondary, setNewTeamSecondary] = useState('#DBA111');
   const [newTeamRtmCards, setNewTeamRtmCards] = useState('');
+  const [newTeamLogo, setNewTeamLogo] = useState('');
   const [editingTeam, setEditingTeam] = useState(null);
   const [purseModalTeam, setPurseModalTeam] = useState(null);
   const [purseAdjType, setPurseAdjType] = useState('ADD');
@@ -918,6 +919,7 @@ export default function CommitteeAdminDashboard() {
           name: newTeamName,
           code: newTeamCode || undefined,
           pin: newTeamPin || undefined,
+          logoUrl: newTeamLogo || undefined,
           primaryColor: newTeamPrimary,
           secondaryColor: newTeamSecondary,
           rtmCardsTotal:
@@ -928,6 +930,7 @@ export default function CommitteeAdminDashboard() {
       setNewTeamCode('');
       setNewTeamPin('');
       setNewTeamRtmCards('');
+      setNewTeamLogo('');
       showNotice('Team added.');
     } catch (err) {
       showNotice(err.message, 'error');
@@ -3292,6 +3295,59 @@ export default function CommitteeAdminDashboard() {
                   </button>
                 </div>
               </div>
+
+              {/* Team Logo Upload / URL Option */}
+              <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center gap-3">
+                <div className="flex-1 min-w-[240px]">
+                  <label className="block text-[11px] font-bold uppercase text-slate-400 mb-1">
+                    Team Logo / Crest (Upload Image or Enter URL)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newTeamLogo}
+                      onChange={e => setNewTeamLogo(e.target.value)}
+                      placeholder="Paste image URL or click Upload Logo..."
+                      className="flex-1 rounded-xl bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white placeholder-slate-600"
+                    />
+                    <label className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0 border border-slate-700">
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Upload Logo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = ev => {
+                            setNewTeamLogo(ev.target?.result);
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                </div>
+                {newTeamLogo && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 shrink-0">
+                    <img
+                      src={newTeamLogo}
+                      alt="Logo Preview"
+                      className="w-8 h-8 rounded-lg object-contain bg-slate-900 border border-slate-700 p-0.5"
+                    />
+                    <span className="text-[11px] text-slate-400">Custom Logo</span>
+                    <button
+                      type="button"
+                      onClick={() => setNewTeamLogo('')}
+                      className="text-xs text-rose-400 hover:text-rose-300 font-bold"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
             </form>
 
             {/* Admin-Only Master Team Login Credentials Directory (Code + PIN) */}
@@ -3350,7 +3406,37 @@ export default function CommitteeAdminDashboard() {
                         <tr key={t.id} className="hover:bg-slate-950/60">
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2.5">
-                              <TeamLogo team={t} size="xs" />
+                              <div className="relative group/logo shrink-0">
+                                <TeamLogo team={t} size="xs" />
+                                <label
+                                  className="absolute inset-0 bg-black/75 rounded opacity-0 group-hover/logo:opacity-100 flex items-center justify-center text-amber-300 cursor-pointer transition-opacity"
+                                  title="Upload new team logo"
+                                >
+                                  <Camera className="w-3 h-3" />
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const reader = new FileReader();
+                                      reader.onload = async ev => {
+                                        try {
+                                          await apiFetch(`/api/auctions/${auctionId}/teams/${t.id}`, {
+                                            method: 'PATCH',
+                                            body: JSON.stringify({ logoUrl: ev.target?.result })
+                                          });
+                                          showNotice(`Logo updated for ${t.name}.`);
+                                        } catch (err) {
+                                          showNotice(err.message, 'error');
+                                        }
+                                      };
+                                      reader.readAsDataURL(file);
+                                    }}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
                               <span className="font-bold text-white">{t.name}</span>
                             </div>
                           </td>
@@ -3453,7 +3539,39 @@ export default function CommitteeAdminDashboard() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <TeamLogo team={team} size="md" />
+                      <div className="relative group/logo shrink-0">
+                        <TeamLogo team={team} size="md" />
+                        <label
+                          className="absolute inset-0 bg-black/70 rounded-xl opacity-0 group-hover/logo:opacity-100 flex flex-col items-center justify-center text-[9px] font-bold text-amber-300 cursor-pointer transition-opacity"
+                          title="Click to upload team logo"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Logo</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = async ev => {
+                                const base64 = ev.target?.result;
+                                try {
+                                  await apiFetch(`/api/auctions/${auctionId}/teams/${team.id}`, {
+                                    method: 'PATCH',
+                                    body: JSON.stringify({ logoUrl: base64 })
+                                  });
+                                  showNotice(`Logo updated for ${team.name}.`);
+                                } catch (err) {
+                                  showNotice(err.message, 'error');
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-display text-lg font-extrabold text-white">
@@ -4681,6 +4799,62 @@ export default function CommitteeAdminDashboard() {
                   className="w-full h-9 rounded-xl bg-slate-950 border border-slate-800 p-1"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-300 mb-1">
+                Team Logo / Crest (Upload Image or Enter URL)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editingTeam.logoUrl || ''}
+                  onChange={e => setEditingTeam({ ...editingTeam, logoUrl: e.target.value })}
+                  placeholder="Paste image URL or click Upload Logo..."
+                  className="flex-1 rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2 text-xs text-white"
+                />
+                <label className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 cursor-pointer shrink-0">
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Upload Logo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => {
+                        setEditingTeam(prev => ({ ...prev, logoUrl: ev.target?.result }));
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              {editingTeam.logoUrl && (
+                <div className="mt-2 flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={editingTeam.logoUrl}
+                      alt="Logo Preview"
+                      className="w-10 h-10 rounded-lg object-contain bg-slate-900 border border-slate-700 p-0.5 shrink-0"
+                    />
+                    <span className="text-[11px] text-slate-400 truncate">
+                      {editingTeam.logoUrl.startsWith('data:')
+                        ? 'Custom logo image attached (Ready to save)'
+                        : editingTeam.logoUrl}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTeam(prev => ({ ...prev, logoUrl: '' }))}
+                    className="text-xs text-rose-400 hover:text-rose-300 font-bold shrink-0 px-2 py-1"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button

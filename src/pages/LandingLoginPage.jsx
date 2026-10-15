@@ -45,9 +45,9 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
 
   const [auctions, setAuctions] = useState([]);
 
-  // Admin Login Form
-  const [email, setEmail] = useState('superadmin@vista.nmamit.in');
-  const [password, setPassword] = useState('vista2027');
+  // Admin Login Form (No prefilled credentials)
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   // Team Login Form
   const [selectedAuctionId, setSelectedAuctionId] = useState('');
@@ -505,8 +505,9 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                       type="email"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
+                      placeholder="admin@vista.nmamit.in"
                       required
-                      className="w-full rounded-xl bg-slate-950 border border-slate-800 pl-10 pr-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                      className="w-full rounded-xl bg-slate-950 border border-slate-800 pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
                     />
                   </div>
                 </div>
@@ -521,8 +522,9 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                       type="password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••••••"
                       required
-                      className="w-full rounded-xl bg-slate-950 border border-slate-800 pl-10 pr-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500"
+                      className="w-full rounded-xl bg-slate-950 border border-slate-800 pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
                     />
                   </div>
                 </div>
@@ -530,51 +532,16 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm tracking-wide shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-sm tracking-wide shadow-lg shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? 'Authenticating...' : 'Sign In to Control Console'}
                 </button>
 
-                {/* Quick Fill Role Credentials */}
-                <div className="pt-4 border-t border-slate-800/80 space-y-2">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Quick-Fill Role Accounts (Password: vista2027)
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('superadmin@vista.nmamit.in');
-                        setPassword('vista2027');
-                      }}
-                      className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 text-left transition-all cursor-pointer"
-                    >
-                      <div className="text-xs font-bold text-amber-400">Super Admin</div>
-                      <div className="text-[10px] text-slate-400 truncate">superadmin@vista.nmamit.in</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('auctioneer@vista.nmamit.in');
-                        setPassword('vista2027');
-                      }}
-                      className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 text-left transition-all cursor-pointer"
-                    >
-                      <div className="text-xs font-bold text-emerald-400">Auctioneer</div>
-                      <div className="text-[10px] text-slate-400 truncate">auctioneer@vista.nmamit.in</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('operator@vista.nmamit.in');
-                        setPassword('vista2027');
-                      }}
-                      className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-indigo-500/50 text-left transition-all cursor-pointer"
-                    >
-                      <div className="text-xs font-bold text-indigo-400">Bid Operator</div>
-                      <div className="text-[10px] text-slate-400 truncate">operator@vista.nmamit.in</div>
-                    </button>
-                  </div>
+                <div className="pt-4 border-t border-slate-800/80 text-center">
+                  <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Restricted administrative portal. Valid credentials required.</span>
+                  </p>
                 </div>
               </form>
             )}
