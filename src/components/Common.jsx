@@ -17,6 +17,7 @@ import {
   generateItemSvgDataUri,
   generateCricketAvatarSvgDataUri,
   CRICKETER_VERIFIED_IMAGES,
+  IPL_PLAYER_STATS,
   cleanPlayerKey,
   AUCTION_STATES,
   isOverseasPlayer
