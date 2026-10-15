@@ -28,15 +28,13 @@ import {
   VistaHeader,
   ItemImage,
   TeamLogo,
-  OverseasPlane,
-  PlayerStatsBar
+  OverseasPlane
 } from '../components/Common.jsx';
 import {
   formatCurrency,
   isOverseasPlayer,
   cleanPlayerKey,
   CRICKETER_VERIFIED_IMAGES,
-  getPlayerStats,
   ROLES
 } from '../../shared/constants.js';
 
@@ -87,17 +85,13 @@ export default function PlayersDirectoryPage() {
   const filteredPlayers = useMemo(() => {
     let list = [...allItems];
 
-    // 1. Text Search (Name, Pool, Role, Last Team, Country)
+    // 1. Text Search (Name, Pool)
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       list = list.filter(it => {
         const nameMatch = it.name?.toLowerCase().includes(q);
         const poolMatch = it.poolName?.toLowerCase().includes(q);
-        const stats = getPlayerStats(it, auction);
-        const roleMatch = stats?.role?.toLowerCase().includes(q);
-        const lastTeamMatch = stats?.lastTeam?.toLowerCase().includes(q);
-        const countryMatch = stats?.country?.toLowerCase().includes(q);
-        return nameMatch || poolMatch || roleMatch || lastTeamMatch || countryMatch;
+        return nameMatch || poolMatch;
       });
     }
 
@@ -338,7 +332,7 @@ export default function PlayersDirectoryPage() {
               </h1>
               <p className="text-slate-400 text-sm sm:text-base mt-1.5 max-w-2xl leading-relaxed">
                 Live roster showcasing every athlete registered under the hammer. Search by player name,
-                career statistics, last team played, or filter by category and auction status.
+                or filter by category and auction status.
               </p>
             </div>
 
@@ -394,7 +388,7 @@ export default function PlayersDirectoryPage() {
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search player by name, role, country, last team played, or pool..."
+                placeholder="Search player by name or category..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 className="w-full pl-11 pr-10 py-3 bg-slate-900/90 border border-slate-700/80 rounded-2xl text-white placeholder-slate-400 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition shadow-inner"
@@ -561,7 +555,6 @@ export default function PlayersDirectoryPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredPlayers.map((item, idx) => {
-                const stats = getPlayerStats(item, auction);
                 const isOverseas = isOverseasPlayer(item);
                 const winningTeam = item.soldToTeamId
                   ? auction.teams?.find(t => t.id === item.soldToTeamId)
@@ -661,14 +654,6 @@ export default function PlayersDirectoryPage() {
                           )}
                         </div>
                       </div>
-
-                      {/* Career Broadcast Stats Strip & Last Team Played */}
-                      <PlayerStatsBar
-                        playerName={item.name}
-                        poolName={item.poolName}
-                        auction={auction}
-                        size="md"
-                      />
                     </div>
 
                     {/* Bottom Admin Quick Action Bar */}
@@ -850,16 +835,6 @@ export default function PlayersDirectoryPage() {
               >
                 <X className="w-6 h-6" />
               </button>
-            </div>
-
-            {/* Expanded Career Stats Strip */}
-            <div className="my-5">
-              <PlayerStatsBar
-                playerName={selectedPlayer.name}
-                poolName={selectedPlayer.poolName}
-                auction={auction}
-                size="lg"
-              />
             </div>
 
             {/* Status Breakdown Card */}

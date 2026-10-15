@@ -19,8 +19,7 @@ import {
   TeamLogo,
   ItemImage,
   StatusBadge,
-  OverseasPlane,
-  PlayerStatsBar
+  OverseasPlane
 } from '../components/Common.jsx';
 import {
   formatCurrency,
@@ -338,13 +337,6 @@ export default function TeamDashboard() {
                   </div>
                 </div>
               </div>
-
-              <PlayerStatsBar
-                playerName={activeItem.name}
-                poolName={activeItem.poolName}
-                auction={auction}
-                size="md"
-              />
             </div>
           ) : (
             <div className="py-6 text-center">

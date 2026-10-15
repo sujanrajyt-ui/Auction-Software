@@ -43,8 +43,7 @@ import {
   TeamLogo,
   ItemImage,
   StatusBadge,
-  OverseasPlane,
-  PlayerStatsBar
+  OverseasPlane
 } from '../components/Common.jsx';
 import {
   AUCTION_STATES,
@@ -53,8 +52,7 @@ import {
   formatCurrency,
   parseCurrencyInput,
   isIplAuction,
-  getTeamOverseasCount,
-  getPlayerStats
+  getTeamOverseasCount
 } from '../../shared/constants.js';
 import {
   exportAuctionResults,
@@ -1478,14 +1476,6 @@ export default function CommitteeAdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Full-width Broadcast Career Stats & Last Team Bar */}
-                  <PlayerStatsBar
-                    playerName={activeItem.name}
-                    poolName={activeItem.poolName}
-                    auction={auction}
-                    size="md"
-                  />
-
                   {/* Primary Action Controls Bar */}
                   <div className="mt-6 pt-5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
                     {/* Left: Team Selector + Primary + BID + EDIT BID + UNDO BID */}
@@ -1568,23 +1558,8 @@ export default function CommitteeAdminDashboard() {
                         disabled={busyAction || auction.status !== AUCTION_STATES.LIVE}
                         onClick={() => {
                           const activeTeams = (auction.teams || []).filter(t => !t.disabled);
-                          const playerStats = getPlayerStats(
-                            activeItem.name,
-                            activeItem.poolName,
-                            auction
-                          );
-                          const lastTeamHint = (playerStats?.lastTeam || '').toLowerCase();
-                          const matchedLastTeam = lastTeamHint
-                            ? activeTeams.find(
-                                t =>
-                                  (t.shortName || '').toLowerCase() === lastTeamHint ||
-                                  (t.name || '').toLowerCase().includes(lastTeamHint) ||
-                                  lastTeamHint.includes((t.shortName || '').toLowerCase())
-                              )
-                            : null;
                           const eligibleTeams = activeTeams.filter(t => (t.rtmRemaining || 0) > 0);
                           const defaultTeam =
-                            matchedLastTeam ||
                             eligibleTeams.find(t => t.id !== activeItem.highestBidderTeamId) ||
                             eligibleTeams[0] ||
                             activeTeams.find(t => t.id !== activeItem.highestBidderTeamId) ||
@@ -2524,7 +2499,6 @@ export default function CommitteeAdminDashboard() {
                             {item.status}
                           </span>
                         </div>
-                        <PlayerStatsBar item={item} auction={auction} size="sm" />
                       </div>
                     </div>
 
@@ -4007,14 +3981,6 @@ export default function CommitteeAdminDashboard() {
                   <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[10px] font-extrabold uppercase">
                     Right To Match (RTM)
                   </span>
-                  {(() => {
-                    const st = getPlayerStats(activeItem.name, activeItem.poolName, auction);
-                    return st?.lastTeam ? (
-                      <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-extrabold uppercase">
-                        Last Team: {st.lastTeam}
-                      </span>
-                    ) : null;
-                  })()}
                 </div>
                 <h3 className="font-display text-lg font-bold text-white mt-1">
                   Exercise RTM Card for {activeItem.name}

@@ -1291,7 +1291,7 @@ function hashPlayerSeed(str) {
  * Supports both getPlayerStats(playerName, poolName, auction) and getPlayerStats(item, auction).
  */
 export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
-  if (!itemOrName) return null;
+  return null;
 
   let displayName = '';
   let poolName = '';

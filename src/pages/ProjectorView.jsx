@@ -7,8 +7,7 @@ import {
   ItemImage,
   SoundControl,
   StatusBadge,
-  OverseasPlane,
-  PlayerStatsBar
+  OverseasPlane
 } from '../components/Common.jsx';
 import { AUCTION_STATES, formatCurrency } from '../../shared/constants.js';
 
@@ -213,12 +212,6 @@ export default function ProjectorView() {
                     className="ml-2 sm:ml-3 text-2xl sm:text-4xl lg:text-5xl"
                   />
                 </h1>
-                <PlayerStatsBar
-                  playerName={overlay.itemName}
-                  poolName={overlay.poolName}
-                  auction={auction}
-                  size="lg"
-                />
 
                 <div className="flex items-center justify-center lg:justify-start gap-4 sm:gap-5 pt-2">
                   <TeamLogo
@@ -282,14 +275,6 @@ export default function ProjectorView() {
                 className="ml-2 sm:ml-3 text-2xl sm:text-4xl lg:text-5xl"
               />
             </h1>
-            <div className="max-w-2xl w-full">
-              <PlayerStatsBar
-                playerName={overlay.itemName}
-                poolName={overlay.poolName}
-                auction={auction}
-                size="lg"
-              />
-            </div>
           </div>
         ) : showRetentionBoard ? (
           /* 3. RETENTION BOARD */
@@ -411,12 +396,6 @@ export default function ProjectorView() {
                     className="ml-2 sm:ml-3 text-2xl sm:text-4xl lg:text-5xl"
                   />
                 </h1>
-                <PlayerStatsBar
-                  playerName={activeItem.name}
-                  poolName={activeItem.poolName}
-                  auction={auction}
-                  size="lg"
-                />
               </div>
 
               {/* Dominant CURRENT BID & HIGHEST BIDDER Cards */}

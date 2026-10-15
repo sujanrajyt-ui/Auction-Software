@@ -29,13 +29,11 @@ import {
   StatusBadge,
   TeamLogo,
   ItemImage,
-  OverseasPlane,
-  PlayerStatsBar
+  OverseasPlane
 } from '../components/Common.jsx';
 import {
   formatCurrency,
   BUILTIN_LOGOS,
-  getPlayerStats,
   isOverseasPlayer,
   cleanPlayerKey
 } from '../../shared/constants.js';
@@ -155,17 +153,13 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
   const filteredShowcasePlayers = useMemo(() => {
     let list = [...allShowcaseItems];
 
-    // Text search (Name, Role, Last Team, Country, Pool)
+    // Text search (Name, Pool)
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       list = list.filter(it => {
         const nameMatch = it.name?.toLowerCase().includes(q);
         const poolMatch = it.poolName?.toLowerCase().includes(q);
-        const stats = getPlayerStats(it, showcaseAuction);
-        const roleMatch = stats?.role?.toLowerCase().includes(q);
-        const lastTeamMatch = stats?.lastTeam?.toLowerCase().includes(q);
-        const countryMatch = stats?.country?.toLowerCase().includes(q);
-        return nameMatch || poolMatch || roleMatch || lastTeamMatch || countryMatch;
+        return nameMatch || poolMatch;
       });
     }
 
@@ -615,7 +609,7 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                 </span>
               </h2>
               <p className="text-slate-400 text-xs sm:text-sm max-w-2xl">
-                Browse official auction players, verified career broadcast stats, authentic historical teams, and live bidding status in real-time.
+                Browse official auction players, categories, base prices, and live bidding status in real-time.
               </p>
             </div>
 
@@ -710,7 +704,7 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search by player name, role (e.g. Batsman, Fast), last team (e.g. DC, SRH, CSK), or country..."
+                placeholder="Search by player name or category..."
                 className="w-full rounded-xl bg-slate-950 border border-slate-800 pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-all"
               />
               {searchQuery && (
@@ -871,7 +865,6 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
             {filteredShowcasePlayers.map(player => {
-              const stats = getPlayerStats(player, showcaseAuction);
               const winningTeam = player.soldToTeamId ? teamsMap.get(player.soldToTeamId) : null;
               const isSold = player.status === 'SOLD';
               const isActive = player.status === 'ACTIVE';
@@ -952,27 +945,12 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                         {player.name}
                       </h3>
 
-                      {/* Role Pill */}
+                      {/* Category Pill */}
                       <div className="flex flex-wrap items-center gap-1 mt-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                          {stats?.role || 'Cricketer'}
+                          {player.poolName || 'Auction Player'}
                         </span>
-                        {stats?.country && (
-                          <span className="text-[10px] font-semibold text-slate-400">
-                            • {stats.country}
-                          </span>
-                        )}
                       </div>
-
-                      {/* Prominent Authentic Last Team Played Badge */}
-                      {stats?.lastTeam && (
-                        <div className="mt-1.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-purple-500/25 to-indigo-500/20 text-purple-200 border border-purple-400/40 text-[10px] font-black uppercase tracking-wider shadow-sm">
-                            <span className="text-purple-400 font-extrabold">LAST:</span>
-                            <strong className="text-white font-black">{stats.lastTeam}</strong>
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -1029,33 +1007,6 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                       </div>
                     )}
                   </div>
-
-                  {/* 4-Stat Career Metrics Grid */}
-                  {stats?.metrics && stats.metrics.length > 0 && (
-                    <div className="grid grid-cols-4 gap-1.5 pt-2 border-t border-slate-800/80 text-center">
-                      {stats.metrics.map(m => (
-                        <div
-                          key={m.label}
-                          className={`rounded-lg px-1.5 py-1 ${
-                            m.highlight
-                              ? 'bg-amber-500/10 border border-amber-500/30'
-                              : 'bg-slate-950/70 border border-slate-800/70'
-                          }`}
-                        >
-                          <div className={`text-[8px] font-extrabold uppercase tracking-wider truncate ${
-                            m.highlight ? 'text-amber-300' : 'text-slate-400'
-                          }`}>
-                            {m.label}
-                          </div>
-                          <div className={`font-mono-num font-black text-xs mt-0.5 truncate ${
-                            m.highlight ? 'text-amber-400' : 'text-white'
-                          }`}>
-                            {m.value}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
                   {/* Read-Only Inspect Button */}
                   <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-amber-400 group-hover:text-amber-300 font-bold transition">
@@ -1124,31 +1075,11 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                   {selectedPlayerModal.name}
                 </h3>
 
-                {(() => {
-                  const modalStats = getPlayerStats(selectedPlayerModal, showcaseAuction);
-                  return (
-                    <div className="space-y-1.5 mt-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                          {modalStats?.role || 'Cricketer'}
-                        </span>
-                        {modalStats?.country && (
-                          <span className="text-xs text-slate-400 font-semibold">
-                            {modalStats.country}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Prominent Authentic Last Team */}
-                      {modalStats?.lastTeam && (
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/25 to-indigo-500/20 text-purple-200 border border-purple-400/50 text-xs font-black uppercase tracking-wider shadow-md">
-                          <span className="text-purple-300">HISTORICAL LAST TEAM:</span>
-                          <strong className="text-white text-sm">{modalStats.lastTeam}</strong>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    {selectedPlayerModal.poolName || 'Auction Player'}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1224,19 +1155,6 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                 );
               })()
             )}
-
-            {/* Full Broadcast Career Statistics Bar */}
-            <div>
-              <div className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">
-                Official Career Broadcast Statistics
-              </div>
-              <PlayerStatsBar
-                playerName={selectedPlayerModal.name}
-                poolName={selectedPlayerModal.poolName}
-                auction={showcaseAuction}
-                size="lg"
-              />
-            </div>
 
             {/* Modal Footer (Read-Only) */}
             <div className="flex justify-end pt-2">

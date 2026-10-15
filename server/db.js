@@ -9,8 +9,7 @@ import {
   BUILTIN_LOGOS,
   calculateNextBid,
   getIncrementForAmount,
-  normalizePlayerName,
-  getPlayerStats
+  normalizePlayerName
 } from '../shared/constants.js';
 
 const DEFAULT_DATA_DIR = process.env.VERCEL
@@ -493,24 +492,10 @@ export function getHydratedAuction(auctionId, options = { includePrivateRetentio
   const allItems = db
     .prepare('SELECT * FROM items WHERE auctionId = ? ORDER BY queueOrder ASC, createdAt ASC')
     .all(auctionId)
-    .map(item => {
-      let parsedStats = null;
-      if (item.statsJson) {
-        try {
-          parsedStats = JSON.parse(item.statsJson);
-        } catch {
-          parsedStats = null;
-        }
-      }
-      if (!parsedStats || parsedStats.sport === 'IPL') {
-        const fresh = getPlayerStats(item, auction);
-        if (fresh) parsedStats = fresh;
-      }
-      return {
-        ...item,
-        stats: parsedStats
-      };
-    });
+    .map(item => ({
+      ...item,
+      stats: null
+    }));
 
   const rawRetentions = db
     .prepare('SELECT * FROM retentions WHERE auctionId = ? ORDER BY createdAt ASC')
