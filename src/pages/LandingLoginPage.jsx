@@ -96,8 +96,9 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
       .catch(() => {})
       .finally(() => setShowcaseLoading(false));
 
-    // Real-time live polling for spectator showcase
+    // Real-time live polling for spectator showcase (pause if tab hidden, 15s interval)
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       apiFetch(`/api/auctions/${showcaseAuctionId}`)
         .then(data => {
           if (data?.auction) {
@@ -105,7 +106,7 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
           }
         })
         .catch(() => {});
-    }, 6000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [showcaseAuctionId, apiFetch]);
 

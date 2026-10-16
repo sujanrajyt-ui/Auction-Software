@@ -663,6 +663,10 @@ app.get('/api/auctions/:auctionId', (req, res) => {
     return res.status(404).json({ error: 'Auction not found.' });
   }
 
+  if (!isAuthorizedAdmin) {
+    res.setHeader('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
+  }
+
   res.json({ auction: hydrated });
 });
 
