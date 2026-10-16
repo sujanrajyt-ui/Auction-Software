@@ -21,6 +21,7 @@ import {
 import { ensureSeedData, createAuctionInstance } from './seed.js';
 import { resolveItemImage, resolveTeamIdentity, isRealOnlineImage } from './imageResolver.js';
 import { syncFromNeonIfNeeded, syncToNeon, isNeonEnabled } from './neonSync.js';
+import { broadcastToSupabase } from './supabaseRealtime.js';
 import {
   AUCTION_STATES,
   ROLES,
@@ -241,6 +242,38 @@ function broadcastAuctionState(auctionId, extraEvent = null) {
   }
 
   io.emit('platform:updated');
+
+  // Supabase Realtime broadcast for 0-latency live updates across Vercel deployments
+  try {
+    const compactTeams = publicState?.teams?.map(t => ({
+      id: t.id,
+      remainingPurse: t.remainingPurse,
+      totalSpent: t.totalSpent,
+      squadCount: t.squadCount,
+      rtmRemaining: t.rtmRemaining
+    }));
+    const compactState = {
+      id: publicState.id,
+      status: publicState.status,
+      activeItemId: publicState.activeItemId,
+      activeItem: publicState.activeItem,
+      projectorOverlay: publicState.projectorOverlay,
+      retentionsPublished: publicState.retentionsPublished,
+      stats: publicState.stats,
+      teamsSummary: compactTeams
+    };
+
+    broadcastToSupabase(auctionId, 'auction:compact_state', compactState);
+
+    if (extraEvent) {
+      broadcastToSupabase(auctionId, 'auction:event', extraEvent);
+      if (extraEvent.type === 'DAY_1_SUMMARY_TOGGLED') {
+        broadcastToSupabase(auctionId, 'DAY_1_SUMMARY_TOGGLED', extraEvent);
+      }
+    }
+  } catch (err) {
+    console.warn('[Supabase Broadcast Failed]:', err?.message || err);
+  }
 }
 
 /**

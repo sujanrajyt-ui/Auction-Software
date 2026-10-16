@@ -16,6 +16,11 @@ export const ROLES = {
   TEAM: 'TEAM'
 };
 
+export const SUPABASE_CONFIG = {
+  url: 'https://yemkpgqbnqzdwmdjiezn.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InllbWtwZ3FibnF6ZHdtZGppZXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNjcyMjMsImV4cCI6MjEwNzc0MzIyM30.T7zSIABu9KTsL9ryTveVdvjtKQhHfXqk_Vf3fRt6Tic'
+};
+
 // Fixed predefined currency list (Section 8)
 export const PREDEFINED_CURRENCIES = {
   EUR: {

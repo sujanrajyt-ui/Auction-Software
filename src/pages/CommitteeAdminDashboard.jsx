@@ -66,7 +66,7 @@ export default function CommitteeAdminDashboard() {
   const { auctionId } = useParams();
   const navigate = useNavigate();
   const { user, apiFetch } = useAuth();
-  const { auction, connected, loading, error } = useAuctionSocket(auctionId);
+  const { auction, setAuction, connected, loading, error, broadcastLiveEvent } = useAuctionSocket(auctionId);
 
   const [activeTab, setActiveTab] = useState('CONTROL');
   const [toast, setToast] = useState(null);
@@ -212,6 +212,12 @@ export default function CommitteeAdminDashboard() {
   const handleStateChange = async nextStatus => {
     try {
       setBusyAction(true);
+      if (setAuction) {
+        setAuction(prev => (prev ? { ...prev, status: nextStatus } : prev));
+      }
+      if (broadcastLiveEvent) {
+        broadcastLiveEvent('auction:state_change', { status: nextStatus });
+      }
       await apiFetch(`/api/auctions/${auctionId}/state`, {
         method: 'POST',
         body: JSON.stringify({ status: nextStatus })
@@ -243,12 +249,40 @@ export default function CommitteeAdminDashboard() {
     try {
       setBusyAction(true);
       const isCurrentlyActive = auction?.projectorOverlay?.type === 'DAY_1_SUMMARY';
+      const nextActive = !isCurrentlyActive;
+      const overlayPayload = nextActive
+        ? { type: 'DAY_1_SUMMARY', activatedAt: new Date().toISOString() }
+        : null;
+
+      // 1. Instant optimistic local UI update (0ms latency for admin)
+      if (setAuction) {
+        setAuction(prev => {
+          if (!prev) return prev;
+          const nextStatus =
+            nextActive && prev.status === AUCTION_STATES.LIVE ? AUCTION_STATES.PAUSED : prev.status;
+          return {
+            ...prev,
+            status: nextStatus,
+            projectorOverlay: overlayPayload
+          };
+        });
+      }
+
+      // 2. Instant client-to-client broadcast (< 25ms latency to Projector & all peers)
+      if (broadcastLiveEvent) {
+        broadcastLiveEvent('DAY_1_SUMMARY_TOGGLED', {
+          active: nextActive,
+          overlay: overlayPayload
+        });
+      }
+
+      // 3. Server-side database persistence
       await apiFetch(`/api/auctions/${auctionId}/day1-summary`, {
         method: 'POST',
-        body: JSON.stringify({ active: !isCurrentlyActive })
+        body: JSON.stringify({ active: nextActive })
       });
       showNotice(
-        !isCurrentlyActive
+        nextActive
           ? 'End of Day 1 Projector Showcase Activated!'
           : 'Day 1 Summary Closed. Projector Restored.'
       );

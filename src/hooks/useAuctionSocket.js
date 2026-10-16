@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext.jsx';
 import { playAuctionSound } from '../utils/sound.js';
+import { getAuctionRealtimeChannel, broadcastLive } from '../utils/supabaseClient.js';
+import { AUCTION_STATES } from '../../shared/constants.js';
 
 export function useAuctionSocket(auctionId, teamId = null) {
   const { token, apiFetch } = useAuth();
@@ -42,6 +44,8 @@ export function useAuctionSocket(auctionId, teamId = null) {
           } else if (ov.type === 'UNSOLD') {
             playAuctionSound('UNSOLD');
             setLastEvent({ type: 'ITEM_UNSOLD', unsold: ov, receivedAt: Date.now() });
+          } else if (ov.type === 'DAY_1_SUMMARY') {
+            playAuctionSound('TRANSITION');
           }
         } else if (activeId && activeId === prev.activeItemId && curBid > prev.currentBid) {
           playAuctionSound('BID');
@@ -100,6 +104,126 @@ export function useAuctionSocket(auctionId, teamId = null) {
 
     fetchLatestState(false);
 
+    // 1. Supabase Realtime WebSockets (0-Latency sync across Vercel & all clients)
+    const supabaseChannel = getAuctionRealtimeChannel(auctionId);
+    let supabaseSub = null;
+
+    if (supabaseChannel) {
+      const onDay1Toggle = ({ payload }) => {
+        const isActive = Boolean(payload?.active);
+        setAuction(prev => {
+          if (!prev) return prev;
+          const nextStatus =
+            isActive && prev.status === AUCTION_STATES.LIVE ? AUCTION_STATES.PAUSED : prev.status;
+          return {
+            ...prev,
+            status: nextStatus,
+            projectorOverlay: isActive
+              ? payload?.overlay || { type: 'DAY_1_SUMMARY', activatedAt: new Date().toISOString() }
+              : prev.projectorOverlay?.type === 'DAY_1_SUMMARY'
+              ? null
+              : prev.projectorOverlay
+          };
+        });
+        if (isActive) {
+          playAuctionSound('TRANSITION');
+        }
+        setLastEvent({ type: 'DAY_1_SUMMARY_TOGGLED', active: isActive, receivedAt: Date.now() });
+      };
+
+      const onStateChange = ({ payload }) => {
+        if (payload?.status) {
+          setAuction(prev => (prev ? { ...prev, status: payload.status } : prev));
+        }
+      };
+
+      const onCompactState = ({ payload }) => {
+        if (!payload || !payload.id) return;
+        setAuction(prev => {
+          if (!prev) return prev;
+          let updatedTeams = prev.teams;
+          if (Array.isArray(payload.teamsSummary) && Array.isArray(prev.teams)) {
+            const summaryMap = new Map(payload.teamsSummary.map(t => [t.id, t]));
+            updatedTeams = prev.teams.map(t => {
+              const sum = summaryMap.get(t.id);
+              if (!sum) return t;
+              return {
+                ...t,
+                remainingPurse:
+                  sum.remainingPurse !== undefined ? sum.remainingPurse : t.remainingPurse,
+                totalSpent: sum.totalSpent !== undefined ? sum.totalSpent : t.totalSpent,
+                squadCount: sum.squadCount !== undefined ? sum.squadCount : t.squadCount,
+                rtmRemaining: sum.rtmRemaining !== undefined ? sum.rtmRemaining : t.rtmRemaining
+              };
+            });
+          }
+
+          // Sound triggers based on delta
+          const prevOv = prev.projectorOverlay;
+          const nextOv = payload.projectorOverlay;
+          if (nextOv && nextOv.type !== prevOv?.type) {
+            if (nextOv.type === 'SOLD') {
+              playAuctionSound('SOLD');
+              setLastEvent({ type: 'ITEM_SOLD', sale: nextOv, receivedAt: Date.now() });
+              if (teamId && nextOv.teamId === teamId) {
+                setTeamWinNotification({ ...nextOv, receivedAt: Date.now() });
+                playAuctionSound('TEAM_WON');
+              }
+            } else if (nextOv.type === 'UNSOLD') {
+              playAuctionSound('UNSOLD');
+              setLastEvent({ type: 'ITEM_UNSOLD', unsold: nextOv, receivedAt: Date.now() });
+            } else if (nextOv.type === 'DAY_1_SUMMARY') {
+              playAuctionSound('TRANSITION');
+            }
+          }
+
+          return {
+            ...prev,
+            status: payload.status !== undefined ? payload.status : prev.status,
+            activeItemId: payload.activeItemId !== undefined ? payload.activeItemId : prev.activeItemId,
+            activeItem: payload.activeItem !== undefined ? payload.activeItem : prev.activeItem,
+            projectorOverlay:
+              payload.projectorOverlay !== undefined
+                ? payload.projectorOverlay
+                : prev.projectorOverlay,
+            retentionsPublished:
+              payload.retentionsPublished !== undefined
+                ? payload.retentionsPublished
+                : prev.retentionsPublished,
+            stats: payload.stats !== undefined ? payload.stats : prev.stats,
+            teams: updatedTeams
+          };
+        });
+        setConnected(true);
+      };
+
+      const onAuctionEvent = ({ payload }) => {
+        setLastEvent({ ...payload, receivedAt: Date.now() });
+        if (payload?.sound) {
+          playAuctionSound(payload.sound);
+        }
+        if (payload?.type === 'ITEM_SOLD' && teamId && payload?.sale?.teamId === teamId) {
+          setTeamWinNotification({ ...payload.sale, receivedAt: Date.now() });
+          playAuctionSound('TEAM_WON');
+        }
+      };
+
+      const onAuctionSync = () => {
+        fetchLatestState(false);
+      };
+
+      supabaseChannel
+        .on('broadcast', { event: 'DAY_1_SUMMARY_TOGGLED' }, onDay1Toggle)
+        .on('broadcast', { event: 'auction:state_change' }, onStateChange)
+        .on('broadcast', { event: 'auction:compact_state' }, onCompactState)
+        .on('broadcast', { event: 'auction:event' }, onAuctionEvent)
+        .on('broadcast', { event: 'auction:sync' }, onAuctionSync);
+
+      wsConnectedRef.current = true;
+      setConnected(true);
+    }
+
+    // 2. Local Socket.io (for local development)
     const isLocalHost =
       window.location.hostname === 'localhost' ||
       window.location.hostname === '127.0.0.1' ||
@@ -132,7 +256,9 @@ export function useAuctionSocket(auctionId, teamId = null) {
       });
 
       socket.on('disconnect', () => {
-        wsConnectedRef.current = false;
+        if (!supabaseChannel) {
+          wsConnectedRef.current = false;
+        }
       });
 
       socket.on('auction:state', updatedAuction => {
@@ -154,12 +280,10 @@ export function useAuctionSocket(auctionId, teamId = null) {
       });
     }
 
-    // Serverless / fallback real-time polling (keeps Vercel deployments live in real time)
+    // 3. Fallback polling as a safety net (relaxed to 2.5s)
     const pollInterval = setInterval(() => {
-      if (!wsConnectedRef.current) {
-        fetchLatestState(true);
-      }
-    }, 1500);
+      fetchLatestState(true);
+    }, 2500);
 
     return () => {
       clearInterval(pollInterval);
@@ -174,6 +298,13 @@ export function useAuctionSocket(auctionId, teamId = null) {
     setTeamWinNotification(null);
   }, []);
 
+  const broadcastLiveEvent = useCallback(
+    (eventName, payload) => {
+      broadcastLive(auctionId, eventName, payload);
+    },
+    [auctionId]
+  );
+
   return {
     auction,
     setAuction,
@@ -183,6 +314,8 @@ export function useAuctionSocket(auctionId, teamId = null) {
     lastEvent,
     teamWinNotification,
     dismissWinNotification,
-    refresh: () => fetchLatestState(false)
+    refresh: () => fetchLatestState(false),
+    fetchLatestState,
+    broadcastLiveEvent
   };
 }
