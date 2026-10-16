@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Trophy,
@@ -10,7 +10,11 @@ import {
   X,
   Eye,
   TrendingUp,
-  Layers
+  Layers,
+  Search,
+  ArrowRight,
+  Shield,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAuctionSocket } from '../hooks/useAuctionSocket.js';
@@ -41,7 +45,10 @@ export default function TeamDashboard() {
     dismissWinNotification
   } = useAuctionSocket(auctionId, user?.teamId);
 
-  const [subTab, setSubTab] = useState('SQUAD'); // 'SQUAD' | 'RETENTIONS' | 'ALL_TEAMS'
+  const [subTab, setSubTab] = useState('SQUAD'); // 'SQUAD' | 'ALL_TEAMS' | 'RETENTIONS'
+  const [selectedOtherTeamId, setSelectedOtherTeamId] = useState(null);
+  const [playerSearchQuery, setPlayerSearchQuery] = useState('');
+  const [allTeamsViewMode, setAllTeamsViewMode] = useState('FOCUS'); // 'FOCUS' | 'GRID'
 
   if (loading && !auction) {
     return (
@@ -242,6 +249,31 @@ export default function TeamDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Quick-action bar to check other teams squads */}
+          <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-slate-300">
+              <Users className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                Want to analyze rival team rosters & remaining purses?
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSubTab('ALL_TEAMS');
+                const firstOther = (auction.teams || []).find(t => t.id !== myTeam.id);
+                if (firstOther && !selectedOtherTeamId) {
+                  setSelectedOtherTeamId(firstOther.id);
+                }
+              }}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg cursor-pointer transition-all active:scale-95"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Check Other Teams Squads
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         {/* Live Item & Current Bid Card */}
@@ -354,35 +386,50 @@ export default function TeamDashboard() {
           )}
         </div>
 
-        {/* Navigation Pills for Squad, Retentions & All Teams Purse Standings */}
+        {/* Navigation Pills for Squad, Retentions & All Teams Squads */}
         <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
           {[
             {
               id: 'SQUAD',
-              label: `My Squad & Purchases (${myTeam.squadCount})`
-            },
-            {
-              id: 'RETENTIONS',
-              label: `Retentions Board (${auction.retentions?.length || 0})`
+              label: `My Squad (${myTeam.squadCount})`,
+              icon: Users
             },
             {
               id: 'ALL_TEAMS',
-              label: `All Teams Overview (${auction.teams?.length || 0})`
+              label: `Check All Teams Squads (${auction.teams?.length || 0})`,
+              icon: Shield
+            },
+            {
+              id: 'RETENTIONS',
+              label: `Retentions Board (${auction.retentions?.length || 0})`,
+              icon: Lock
             }
-          ].map(t => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setSubTab(t.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider shrink-0 transition-all cursor-pointer ${
-                subTab === t.id
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+          ].map(t => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setSubTab(t.id);
+                  if (t.id === 'ALL_TEAMS') {
+                    const firstOther = (auction.teams || []).find(tm => tm.id !== myTeam.id);
+                    if (firstOther && !selectedOtherTeamId) {
+                      setSelectedOtherTeamId(firstOther.id);
+                    }
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider shrink-0 transition-all cursor-pointer flex items-center gap-1.5 ${
+                  subTab === t.id
+                    ? 'bg-amber-500 text-slate-950 shadow-md'
+                    : 'bg-slate-900 text-slate-400 hover:text-white'
+                }`}
+              >
+                {Icon && <Icon className="w-3.5 h-3.5" />}
+                {t.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* SUB-TAB 1: MY COMBINED SQUAD (RETENTIONS + PURCHASED ITEMS) */}
@@ -536,50 +583,528 @@ export default function TeamDashboard() {
           </div>
         )}
 
-        {/* SUB-TAB 3: ALL TEAMS PURSE OVERVIEW */}
-        {subTab === 'ALL_TEAMS' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-            {(auction.teams || []).map(t => (
-              <div
-                key={t.id}
-                className={`p-4 rounded-2xl border flex items-center justify-between ${
-                  t.id === myTeam.id
-                    ? 'bg-slate-900 border-amber-500/60'
-                    : 'bg-slate-900/80 border-slate-800'
-                }`}
-                style={{ borderLeftWidth: '4px', borderLeftColor: t.primaryColor }}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <TeamLogo team={t} size="sm" />
-                  <div className="min-w-0">
-                    <div className="font-display font-bold text-sm text-white truncate">
-                      {t.name}
-                    </div>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap">
-                      <span>Squad: {t.squadCount}</span>
-                      <span>•</span>
-                      <span>Spent: {formatCurrency(t.totalSpent, cur)}</span>
-                      {t.rtmTotal > 0 && (
-                        <>
-                          <span>•</span>
-                          <span className="text-purple-300 font-semibold">
-                            RTM {t.rtmRemaining}/{t.rtmTotal}
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
+        {/* SUB-TAB 2: ALL TEAMS SQUADS EXPLORER */}
+        {subTab === 'ALL_TEAMS' && (() => {
+          const allTeams = auction.teams || [];
+          const otherTeams = allTeams.filter(t => t.id !== myTeam.id);
+          const effectiveSelectedId =
+            selectedOtherTeamId || (otherTeams.length > 0 ? otherTeams[0].id : myTeam.id);
+          const activeTeam =
+            allTeams.find(t => t.id === effectiveSelectedId) || otherTeams[0] || myTeam;
+
+          const q = playerSearchQuery.trim().toLowerCase();
+          const searchResults = q
+            ? allTeams.flatMap(team => {
+                const retMatches = (team.retentions || [])
+                  .filter(r => (r.playerName || '').toLowerCase().includes(q))
+                  .map(r => ({
+                    id: r.id,
+                    name: r.playerName,
+                    imageUrl: r.imageUrl,
+                    type: 'RETENTION',
+                    amount: r.amount,
+                    team
+                  }));
+                const purMatches = (team.purchases || [])
+                  .filter(
+                    p =>
+                      (p.name || '').toLowerCase().includes(q) ||
+                      (p.poolName || '').toLowerCase().includes(q)
+                  )
+                  .map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    imageUrl: p.imageUrl,
+                    poolName: p.poolName,
+                    soldViaRtm: p.soldViaRtm,
+                    type: 'PURCHASE',
+                    amount: p.amount,
+                    team
+                  }));
+                return [...retMatches, ...purMatches];
+              })
+            : [];
+
+          return (
+            <div className="space-y-5">
+              {/* Controls Header: Search Bar + Mode Toggle */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="text"
+                    value={playerSearchQuery}
+                    onChange={e => setPlayerSearchQuery(e.target.value)}
+                    placeholder="Search any player across all teams (e.g. Shami, Chahal, Klaasen)..."
+                    className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-slate-900 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
+                  />
+                  {playerSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setPlayerSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-white px-1.5 py-0.5 rounded-full bg-slate-800 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="text-[10px] uppercase text-slate-400">Purse</div>
-                  <div className="font-mono-num text-sm font-extrabold text-amber-400">
-                    {formatCurrency(t.remainingPurse, cur)}
-                  </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlayerSearchQuery('');
+                      setAllTeamsViewMode('FOCUS');
+                    }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider cursor-pointer transition-all ${
+                      allTeamsViewMode === 'FOCUS' && !playerSearchQuery
+                        ? 'bg-amber-500 text-slate-950 shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    🎯 Single Team Focus
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPlayerSearchQuery('');
+                      setAllTeamsViewMode('GRID');
+                    }}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider cursor-pointer transition-all ${
+                      allTeamsViewMode === 'GRID' && !playerSearchQuery
+                        ? 'bg-amber-500 text-slate-950 shadow-md'
+                        : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    📋 All Squads Grid
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+
+              {/* SEARCH RESULTS VIEW */}
+              {q ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>
+                      Found <strong className="text-amber-400 font-mono-num">{searchResults.length}</strong> player(s) matching "{playerSearchQuery}"
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPlayerSearchQuery('')}
+                      className="text-amber-400 hover:underline font-bold cursor-pointer"
+                    >
+                      Clear search
+                    </button>
+                  </div>
+
+                  {searchResults.length === 0 ? (
+                    <div className="py-12 text-center rounded-3xl bg-slate-900/60 border border-slate-800 text-slate-400 text-sm">
+                      No player found matching "{playerSearchQuery}" across any team squad.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {searchResults.map(p => (
+                        <div
+                          key={`${p.team.id}-${p.type}-${p.id}`}
+                          className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3 shadow-md"
+                          style={{ borderLeftWidth: '4px', borderLeftColor: p.team.primaryColor }}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <ItemImage
+                              name={p.name}
+                              poolName={p.poolName || p.type}
+                              imageUrl={p.imageUrl}
+                              className="w-12 h-12 rounded-xl object-cover shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <div className="font-display font-bold text-sm text-white truncate flex items-center gap-1.5">
+                                <span>{p.name}</span>
+                                <OverseasPlane playerName={p.name} auction={auction} />
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <TeamLogo team={p.team} size="xs" />
+                                <span className="text-xs font-bold text-slate-300 truncate">
+                                  {p.team.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {p.type === 'RETENTION' ? (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-extrabold uppercase">
+                                    RETENTION
+                                  </span>
+                                ) : (
+                                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-extrabold uppercase">
+                                    PURCHASE
+                                  </span>
+                                )}
+                                {p.soldViaRtm && (
+                                  <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 text-[9px] font-extrabold uppercase">
+                                    RTM
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="font-mono-num text-sm font-extrabold text-amber-400">
+                              {formatCurrency(p.amount, cur)}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedOtherTeamId(p.team.id);
+                                setPlayerSearchQuery('');
+                                setAllTeamsViewMode('FOCUS');
+                              }}
+                              className="mt-1 text-[10px] font-extrabold text-slate-400 hover:text-white uppercase tracking-wider block cursor-pointer"
+                            >
+                              View Squad →
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : allTeamsViewMode === 'FOCUS' ? (
+                /* SINGLE TEAM FOCUS VIEW */
+                <div className="space-y-5">
+                  {/* Team Selector Horizontal Strip */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                    {allTeams.map(t => {
+                      const isSelected = t.id === activeTeam.id;
+                      const isMine = t.id === myTeam.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setSelectedOtherTeamId(t.id)}
+                          className={`px-3 py-2 rounded-2xl flex items-center gap-2.5 shrink-0 transition-all cursor-pointer border ${
+                            isSelected
+                              ? 'bg-slate-900 shadow-lg scale-102'
+                              : 'bg-slate-950/70 hover:bg-slate-900/60 border-slate-800/80 opacity-80 hover:opacity-100'
+                          }`}
+                          style={{
+                            borderColor: isSelected ? t.primaryColor : undefined,
+                            boxShadow: isSelected ? `0 0 15px ${t.primaryColor}35` : undefined
+                          }}
+                        >
+                          <TeamLogo team={t} size="xs" />
+                          <div className="text-left">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-display font-extrabold text-xs text-white">
+                                {t.code}
+                              </span>
+                              {isMine && (
+                                <span className="text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-500 text-slate-950">
+                                  YOU
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] font-mono-num text-amber-400 font-bold">
+                              {formatCurrency(t.remainingPurse, cur, { preferBillions: true })}
+                            </div>
+                          </div>
+                          <span className="ml-1 px-1.5 py-0.5 rounded-full bg-slate-800 text-[10px] font-bold text-slate-300">
+                            {t.squadCount}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Active Selected Team Banner */}
+                  <div
+                    className="rounded-3xl p-5 sm:p-6 border-2 shadow-2xl relative overflow-hidden"
+                    style={{
+                      background: `linear-gradient(135deg, ${activeTeam.primaryColor}30 0%, #0B0F1A 65%, ${activeTeam.secondaryColor}20 100%)`,
+                      borderColor: `${activeTeam.primaryColor}99`
+                    }}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                      <div className="flex items-center gap-4">
+                        <TeamLogo team={activeTeam} size="lg" />
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest text-white"
+                              style={{ backgroundColor: activeTeam.primaryColor }}
+                            >
+                              {activeTeam.code}
+                            </span>
+                            {activeTeam.id === myTeam.id && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                                ★ Your Team
+                              </span>
+                            )}
+                            {activeTeam.rtmTotal > 0 && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[10px] font-extrabold">
+                                RTM: {activeTeam.rtmRemaining} / {activeTeam.rtmTotal}
+                              </span>
+                            )}
+                            {isIpl && (
+                              <span className="px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/35 text-sky-300 text-[10px] font-extrabold">
+                                ✈️ {getTeamOverseasCount(activeTeam)}/8 Overseas
+                              </span>
+                            )}
+                          </div>
+                          <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white mt-1">
+                            {activeTeam.name.toUpperCase()}
+                          </h2>
+                          <div className="text-xs text-slate-300 mt-1 flex items-center gap-3 flex-wrap">
+                            <span>
+                              Starting Purse:{' '}
+                              <strong className="font-mono-num text-white">
+                                {formatCurrency(activeTeam.startingPurse, cur, { preferBillions: true })}
+                              </strong>
+                            </span>
+                            <span>•</span>
+                            <span>
+                              Total Spent:{' '}
+                              <strong className="font-mono-num text-rose-300">
+                                {formatCurrency(activeTeam.totalSpent, cur)}
+                              </strong>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-slate-950/90 border border-slate-800 text-left sm:text-right shrink-0">
+                        <div className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400">
+                          REMAINING PURSE
+                        </div>
+                        <div className="font-mono-num text-2xl sm:text-3xl font-extrabold text-amber-400 mt-0.5">
+                          {formatCurrency(activeTeam.remainingPurse, cur)}
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-1">
+                          Squad Size: <strong className="text-white">{activeTeam.squadCount}</strong> (
+                          {activeTeam.retentionsCount} Retained • {activeTeam.purchasesCount} Purchased)
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Active Selected Team Squad Roster */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Retained Players Column */}
+                    <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-display text-sm font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                          <Lock className="w-4 h-4" />
+                          Retained Players ({activeTeam.retentions?.length || 0})
+                        </h3>
+                        <span className="font-mono-num text-xs font-bold text-slate-300">
+                          Spend: {formatCurrency(activeTeam.retentionSpend, cur)}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {(activeTeam.retentions || []).map(ret => (
+                          <div
+                            key={ret.id}
+                            className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <ItemImage
+                                name={ret.playerName}
+                                poolName="RETENTION"
+                                imageUrl={ret.imageUrl}
+                                className="w-11 h-11 rounded-xl object-cover shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <div className="text-sm font-bold text-white truncate flex items-center gap-1.5">
+                                  <span>{ret.playerName}</span>
+                                  <OverseasPlane playerName={ret.playerName} auction={auction} />
+                                </div>
+                                <span className="inline-block text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 mt-0.5">
+                                  RETENTION
+                                </span>
+                              </div>
+                            </div>
+                            <div className="font-mono-num text-sm font-extrabold text-amber-400 shrink-0">
+                              {formatCurrency(ret.amount, cur)}
+                            </div>
+                          </div>
+                        ))}
+                        {(!activeTeam.retentions || activeTeam.retentions.length === 0) && (
+                          <div className="py-8 text-center text-xs text-slate-500">
+                            No retentions recorded for {activeTeam.name}.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Purchased Players Column */}
+                    <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-5 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-display text-sm font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                          <Trophy className="w-4 h-4" />
+                          Auction Purchases ({activeTeam.purchases?.length || 0})
+                        </h3>
+                        <span className="font-mono-num text-xs font-bold text-slate-300">
+                          Spend: {formatCurrency(activeTeam.purchaseSpend, cur)}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {(activeTeam.purchases || []).map(p => (
+                          <div
+                            key={p.id}
+                            className="p-3 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <ItemImage
+                                item={p}
+                                className="w-11 h-11 rounded-xl object-cover shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-sm font-bold text-white truncate">{p.name}</span>
+                                  <OverseasPlane playerName={p.name} auction={auction} />
+                                  {p.soldViaRtm && (
+                                    <span className="px-1.5 py-0.5 rounded bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[9px] font-extrabold uppercase">
+                                      RTM
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs text-slate-400">{p.poolName}</div>
+                              </div>
+                            </div>
+                            <div className="font-mono-num text-sm font-extrabold text-emerald-400 shrink-0">
+                              {formatCurrency(p.amount, cur)}
+                            </div>
+                          </div>
+                        ))}
+                        {(!activeTeam.purchases || activeTeam.purchases.length === 0) && (
+                          <div className="py-8 text-center text-xs text-slate-500">
+                            No auction purchases won yet by {activeTeam.name}.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ALL SQUADS GRID VIEW */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {allTeams.map(t => {
+                    const isMine = t.id === myTeam.id;
+                    const allPlayers = [
+                      ...(t.retentions || []).map(r => ({ ...r, name: r.playerName, isRetention: true })),
+                      ...(t.purchases || []).map(p => ({ ...p, isRetention: false }))
+                    ];
+
+                    return (
+                      <div
+                        key={t.id}
+                        className={`rounded-2xl bg-slate-900/90 border p-4 space-y-3.5 shadow-lg ${
+                          isMine ? 'border-amber-400/80 bg-slate-900' : 'border-slate-800'
+                        }`}
+                        style={{ borderTopWidth: '4px', borderTopColor: t.primaryColor }}
+                      >
+                        {/* Team Card Header */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <TeamLogo team={t} size="md" />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-display font-bold text-base text-white truncate">
+                                  {t.name}
+                                </span>
+                                {isMine && (
+                                  <span className="px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 text-[9px] font-black uppercase">
+                                    YOU
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-slate-400 flex items-center gap-2 flex-wrap mt-0.5">
+                                <span>Squad: <strong className="text-white">{t.squadCount}</strong></span>
+                                <span>•</span>
+                                <span>Spent: <strong className="text-rose-300 font-mono-num">{formatCurrency(t.totalSpent, cur)}</strong></span>
+                                {isIpl && (
+                                  <>
+                                    <span>•</span>
+                                    <span>✈️ {getTeamOverseasCount(t)}/8</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="text-right shrink-0">
+                            <div className="text-[10px] uppercase tracking-wider text-slate-400">Purse</div>
+                            <div className="font-mono-num text-sm sm:text-base font-extrabold text-amber-400">
+                              {formatCurrency(t.remainingPurse, cur)}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedOtherTeamId(t.id);
+                                setAllTeamsViewMode('FOCUS');
+                              }}
+                              className="mt-1 text-[10px] font-extrabold text-amber-400 hover:underline cursor-pointer"
+                            >
+                              Focus Squad →
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Players Compact List */}
+                        <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                          {allPlayers.map((player, idx) => (
+                            <div
+                              key={`${player.id}-${idx}`}
+                              className={`px-3 py-1.5 rounded-xl border flex items-center justify-between text-xs ${
+                                player.isRetention
+                                  ? 'bg-amber-500/10 border-amber-500/30'
+                                  : 'bg-slate-950 border-slate-800/80'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <ItemImage
+                                  name={player.name}
+                                  poolName={player.poolName || (player.isRetention ? 'RETENTION' : 'AUCTION')}
+                                  imageUrl={player.imageUrl}
+                                  className="w-6 h-6 rounded-md object-cover shrink-0"
+                                />
+                                <span className="text-white font-medium truncate flex items-center gap-1">
+                                  {player.name}
+                                  <OverseasPlane playerName={player.name} auction={auction} />
+                                </span>
+                                {player.isRetention && (
+                                  <span className="text-[9px] font-extrabold text-amber-400 shrink-0">
+                                    [RET]
+                                  </span>
+                                )}
+                                {player.soldViaRtm && (
+                                  <span className="text-[9px] font-extrabold text-purple-300 shrink-0">
+                                    [RTM]
+                                  </span>
+                                )}
+                              </div>
+                              <span
+                                className={`font-mono-num font-bold shrink-0 ml-2 ${
+                                  player.isRetention ? 'text-amber-400' : 'text-emerald-400'
+                                }`}
+                              >
+                                {formatCurrency(player.amount, cur)}
+                              </span>
+                            </div>
+                          ))}
+                          {allPlayers.length === 0 && (
+                            <div className="py-4 text-center text-xs text-slate-500">
+                              No players acquired yet.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </main>
     </div>
   );
