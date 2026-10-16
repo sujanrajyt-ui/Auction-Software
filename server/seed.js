@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   db,
   initSchema,
@@ -210,6 +212,54 @@ export function ensureSeedData({ forceReset = false } = {}) {
       DELETE FROM auctions;
       DELETE FROM users;
     `);
+  }
+
+  // 0. If database has no auctions, check if GitHub bundled verdict_seed.json exists
+  const existingAuctionsCheck = db.prepare('SELECT COUNT(*) AS cnt FROM auctions').get();
+  if (!existingAuctionsCheck || existingAuctionsCheck.cnt === 0) {
+    const seedJsonPath = path.resolve(process.cwd(), 'data', 'verdict_seed.json');
+    if (fs.existsSync(seedJsonPath)) {
+      try {
+        const dump = JSON.parse(fs.readFileSync(seedJsonPath, 'utf8'));
+        const TABLES_IN_ORDER = [
+          'users',
+          'platform_settings',
+          'auctions',
+          'auction_admins',
+          'teams',
+          'pools',
+          'items',
+          'bids',
+          'retentions',
+          'purse_adjustments',
+          'sales_history',
+          'audit_logs'
+        ];
+        runTransaction(() => {
+          db.exec('PRAGMA foreign_keys = OFF;');
+          try {
+            for (const table of TABLES_IN_ORDER) {
+              const rows = Array.isArray(dump[table]) ? dump[table] : [];
+              if (rows.length === 0) continue;
+              const cols = Object.keys(rows[0]);
+              const placeholders = cols.map(() => '?').join(', ');
+              const stmt = db.prepare(
+                `INSERT OR REPLACE INTO ${table} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
+              );
+              for (const row of rows) {
+                stmt.run(...cols.map(c => (row[c] === undefined ? null : row[c])));
+              }
+            }
+          } finally {
+            db.exec('PRAGMA foreign_keys = ON;');
+          }
+        });
+        console.log('[Seed DB] Successfully hydrated complete auction state from GitHub bundled verdict_seed.json');
+        return;
+      } catch (err) {
+        console.error('[Seed DB Error]: Failed to load verdict_seed.json:', err.message);
+      }
+    }
   }
 
   const now = new Date().toISOString();

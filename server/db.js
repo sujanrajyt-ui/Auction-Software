@@ -12,6 +12,7 @@ import {
   normalizePlayerName
 } from '../shared/constants.js';
 
+const BUNDLED_DB_PATH = path.resolve(process.cwd(), 'data', 'verdict.sqlite');
 const DEFAULT_DATA_DIR = process.env.VERCEL
   ? '/tmp/verdict-data'
   : path.resolve(process.cwd(), 'data');
@@ -21,6 +22,16 @@ const DB_PATH = process.env.DB_PATH
 const DATA_DIR = path.dirname(DB_PATH);
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// On Vercel, if DB does not exist in /tmp, copy the bundled DB from the repository
+if (process.env.VERCEL && !fs.existsSync(DB_PATH) && fs.existsSync(BUNDLED_DB_PATH)) {
+  try {
+    fs.copyFileSync(BUNDLED_DB_PATH, DB_PATH);
+    console.log('[DB Bootstrap] Successfully copied bundled verdict.sqlite to /tmp');
+  } catch (err) {
+    console.warn('[DB Bootstrap Warning]: Failed to copy bundled DB:', err.message);
+  }
 }
 
 export const db = new DatabaseSync(DB_PATH);
