@@ -71,16 +71,29 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
   const [sortBy, setSortBy] = useState('QUEUE'); // 'QUEUE' | 'PRICE_DESC' | 'PRICE_ASC' | 'SOLD_DESC' | 'NAME'
 
   useEffect(() => {
-    apiFetch('/api/public/auctions')
-      .then(data => {
-        const list = data.auctions || [];
-        setAuctions(list);
-        if (list.length > 0) {
-          if (!selectedAuctionId) setSelectedAuctionId(list[0].id);
-          if (!showcaseAuctionId) setShowcaseAuctionId(list[0].id);
-        }
-      })
-      .catch(() => {});
+    const fetchAuctions = () => {
+      apiFetch('/api/public/auctions')
+        .then(data => {
+          const list = data.auctions || [];
+          setAuctions(list);
+          if (list.length > 0) {
+            setSelectedAuctionId(prev => (list.some(a => a.id === prev) ? prev : list[0].id));
+            setShowcaseAuctionId(prev => (list.some(a => a.id === prev) ? prev : list[0].id));
+          } else {
+            setSelectedAuctionId('');
+            setShowcaseAuctionId('');
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchAuctions();
+    const interval = setInterval(fetchAuctions, 10000);
+    window.addEventListener('focus', fetchAuctions);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', fetchAuctions);
+    };
   }, [apiFetch]);
 
   // Load hydrated auction data for public spectator showcase

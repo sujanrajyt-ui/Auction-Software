@@ -503,8 +503,22 @@ app.post('/api/auth/team-login', (req, res) => {
       .prepare('SELECT * FROM teams WHERE auctionId = ? AND UPPER(code) = ? AND pin = ?')
       .get(auctionId, cleanCode, cleanPin);
   } else {
+    // If no auctionId is provided, prioritize LIVE or PAUSED active auctions first
     team = db
-      .prepare('SELECT * FROM teams WHERE UPPER(code) = ? AND pin = ?')
+      .prepare(`
+        SELECT t.* FROM teams t
+        JOIN auctions a ON t.auctionId = a.id
+        WHERE UPPER(t.code) = ? AND t.pin = ?
+        ORDER BY 
+          CASE a.status
+            WHEN 'LIVE' THEN 1
+            WHEN 'PAUSED' THEN 2
+            WHEN 'READY' THEN 3
+            ELSE 4
+          END ASC,
+          a.createdAt DESC
+        LIMIT 1
+      `)
       .get(cleanCode, cleanPin);
   }
 
@@ -993,19 +1007,58 @@ app.delete('/api/auctions/:auctionId', requireSuperAdmin, (req, res) => {
     return res.status(404).json({ error: 'Auction not found.' });
   }
   clearAuctionTimer(auctionId);
-  db.prepare('DELETE FROM auctions WHERE id = ?').run(auctionId);
 
-  recordAudit({
-    auctionId: null,
-    user: req.user,
-    action: 'Auction deleted',
-    entityType: 'AUCTION',
-    entityId: auctionId,
-    entityName: existing.name,
-    previousValue: { name: existing.name, committeeName: existing.committeeName },
-    newValue: null
+  runTransaction(() => {
+    db.prepare('DELETE FROM audit_logs WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM sales_history WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM purse_adjustments WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM retentions WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM bids WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM items WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM pools WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM teams WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM auction_admins WHERE auctionId = ?').run(auctionId);
+    db.prepare('DELETE FROM auctions WHERE id = ?').run(auctionId);
+
+    recordAudit({
+      auctionId: null,
+      user: req.user,
+      action: 'Auction deleted',
+      entityType: 'AUCTION',
+      entityId: auctionId,
+      entityName: existing.name,
+      previousValue: { name: existing.name, committeeName: existing.committeeName },
+      newValue: null
+    });
   });
 
+  // Automatically update verdict_seed.json so deletions persist to GitHub and Vercel
+  try {
+    const TABLES_IN_ORDER = [
+      'users',
+      'platform_settings',
+      'auctions',
+      'auction_admins',
+      'teams',
+      'pools',
+      'items',
+      'bids',
+      'retentions',
+      'purse_adjustments',
+      'sales_history',
+      'audit_logs'
+    ];
+    const dump = {};
+    for (const table of TABLES_IN_ORDER) {
+      dump[table] = db.prepare(`SELECT * FROM ${table}`).all();
+    }
+    const outputPath = path.resolve(process.cwd(), 'data', 'verdict_seed.json');
+    fs.writeFileSync(outputPath, JSON.stringify(dump, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[Auction Delete] Failed to update verdict_seed.json:', err.message);
+  }
+
+  io.emit('AUCTIONS_UPDATED');
   broadcastAuctionState(auctionId);
   res.json({ ok: true });
 });
