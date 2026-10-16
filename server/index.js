@@ -1244,6 +1244,80 @@ app.post('/api/auctions/:auctionId/state', requireAuctionAdmin, (req, res) => {
   res.json({ auction: getHydratedAuction(auctionId) });
 });
 
+// Section 9.5: End of Day 1 Projector Showcase Toggle
+app.post('/api/auctions/:auctionId/day1-summary', requireAuctionAdmin, (req, res) => {
+  const { auctionId } = req.params;
+  const auction = db.prepare('SELECT * FROM auctions WHERE id = ?').get(auctionId);
+  if (!auction) {
+    return res.status(404).json({ error: 'Auction not found.' });
+  }
+
+  let currentOverlay = null;
+  try {
+    currentOverlay = auction.projectorOverlayJson ? JSON.parse(auction.projectorOverlayJson) : null;
+  } catch {}
+
+  const isCurrentlyActive = currentOverlay?.type === 'DAY_1_SUMMARY';
+  const shouldActivate = req.body?.active !== undefined ? Boolean(req.body.active) : !isCurrentlyActive;
+  const now = new Date().toISOString();
+
+  runTransaction(() => {
+    if (shouldActivate) {
+      // Pause if live so bidding timer is not ticking during Day 1 summary
+      const newStatus = auction.status === AUCTION_STATES.LIVE ? AUCTION_STATES.PAUSED : auction.status;
+      const overlayData = JSON.stringify({
+        type: 'DAY_1_SUMMARY',
+        activatedAt: now
+      });
+      db.prepare(`
+        UPDATE auctions
+        SET status = ?, projectorOverlayJson = ?, updatedAt = ?
+        WHERE id = ?
+      `).run(newStatus, overlayData, now, auctionId);
+
+      recordAudit({
+        auctionId,
+        user: req.user,
+        action: 'End of Day 1 Projector Showcase Activated',
+        entityType: 'AUCTION',
+        entityId: auctionId,
+        entityName: auction.name,
+        previousValue: { overlay: currentOverlay },
+        newValue: { overlay: 'DAY_1_SUMMARY' }
+      });
+    } else {
+      db.prepare(`
+        UPDATE auctions
+        SET projectorOverlayJson = NULL, updatedAt = ?
+        WHERE id = ?
+      `).run(now, auctionId);
+
+      recordAudit({
+        auctionId,
+        user: req.user,
+        action: 'End of Day 1 Projector Showcase Closed',
+        entityType: 'AUCTION',
+        entityId: auctionId,
+        entityName: auction.name,
+        previousValue: { overlay: 'DAY_1_SUMMARY' },
+        newValue: { overlay: null }
+      });
+    }
+  });
+
+  broadcastAuctionState(auctionId, {
+    type: 'DAY_1_SUMMARY_TOGGLED',
+    active: shouldActivate,
+    sound: shouldActivate ? 'TRANSITION' : null
+  });
+
+  res.json({
+    success: true,
+    day1Active: shouldActivate,
+    auction: getHydratedAuction(auctionId)
+  });
+});
+
 // Section 10: Reopen Completed Auction
 app.post('/api/auctions/:auctionId/reopen', requireAuctionAdmin, (req, res) => {
   const { auctionId } = req.params;

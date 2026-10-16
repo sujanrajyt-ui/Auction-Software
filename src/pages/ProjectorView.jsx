@@ -9,6 +9,7 @@ import {
   StatusBadge,
   OverseasPlane
 } from '../components/Common.jsx';
+import Day1SummaryView from '../components/Day1SummaryView.jsx';
 import { AUCTION_STATES, formatCurrency } from '../../shared/constants.js';
 
 export default function ProjectorView() {
@@ -54,9 +55,11 @@ export default function ProjectorView() {
   const activeItem = auction.activeItem;
   const highestTeam = activeItem?.highestBidderTeam;
 
-  // Check if 3-second SOLD or UNSOLD dramatic screen is active
+  // Check if 3-second SOLD or UNSOLD dramatic screen is active OR Day 1 Summary is active
   const overlay =
-    auction.projectorOverlay && auction.projectorOverlay.expiresAt > nowTick
+    auction.projectorOverlay &&
+    (auction.projectorOverlay.type === 'DAY_1_SUMMARY' ||
+      (auction.projectorOverlay.expiresAt && auction.projectorOverlay.expiresAt > nowTick))
       ? auction.projectorOverlay
       : null;
 
@@ -169,8 +172,8 @@ export default function ProjectorView() {
         </div>
       </header>
 
-      {/* PAUSED OVERLAY BANNER */}
-      {auction.status === AUCTION_STATES.PAUSED && (
+      {/* PAUSED OVERLAY BANNER (Hidden when Day 1 Summary is active) */}
+      {auction.status === AUCTION_STATES.PAUSED && overlay?.type !== 'DAY_1_SUMMARY' && (
         <div className="relative z-30 bg-amber-500 text-slate-950 py-2.5 sm:py-3 px-4 sm:px-8 flex items-center justify-center gap-2 sm:gap-3 font-display font-extrabold text-sm sm:text-2xl tracking-[0.15em] sm:tracking-[0.2em] uppercase shadow-2xl text-center">
           <PauseCircle className="w-5 h-5 sm:w-7 sm:h-7 stroke-[2.5] shrink-0" />
           AUCTION PAUSED — CURRENT BID & ITEM STATE LOCKED
@@ -179,8 +182,10 @@ export default function ProjectorView() {
 
       {/* MAIN STAGE AREA */}
       <main className="relative z-10 flex-1 flex flex-col justify-center px-4 sm:px-8 py-4 sm:py-6 max-w-[1850px] w-full mx-auto">
-        {/* 1. DRAMATIC 3-SECOND SOLD OVERLAY */}
-        {overlay?.type === 'SOLD' ? (
+        {/* 0. END OF DAY 1 SUMMARY SHOWCASE */}
+        {overlay?.type === 'DAY_1_SUMMARY' ? (
+          <Day1SummaryView auction={auction} />
+        ) : overlay?.type === 'SOLD' ? (
           <div
             className="rounded-3xl sm:rounded-[2.5rem] border-4 p-5 sm:p-10 lg:p-14 text-center shadow-2xl animate-sold-pop flex flex-col items-center justify-center space-y-5 sm:space-y-6"
             style={{

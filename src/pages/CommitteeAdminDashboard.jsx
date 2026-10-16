@@ -34,7 +34,9 @@ import {
   Shuffle,
   Zap,
   FolderPlus,
-  Camera
+  Camera,
+  Trophy,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAuctionSocket } from '../hooks/useAuctionSocket.js';
@@ -230,6 +232,26 @@ export default function CommitteeAdminDashboard() {
         body: JSON.stringify({ targetStatus: AUCTION_STATES.LIVE })
       });
       showNotice('Auction reopened.');
+    } catch (err) {
+      showNotice(err.message, 'error');
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
+  const handleToggleDay1Summary = async () => {
+    try {
+      setBusyAction(true);
+      const isCurrentlyActive = auction?.projectorOverlay?.type === 'DAY_1_SUMMARY';
+      await apiFetch(`/api/auctions/${auctionId}/day1-summary`, {
+        method: 'POST',
+        body: JSON.stringify({ active: !isCurrentlyActive })
+      });
+      showNotice(
+        !isCurrentlyActive
+          ? 'End of Day 1 Projector Showcase Activated!'
+          : 'Day 1 Summary Closed. Projector Restored.'
+      );
     } catch (err) {
       showNotice(err.message, 'error');
     } finally {
@@ -1240,6 +1262,25 @@ export default function CommitteeAdminDashboard() {
                 REOPEN AUCTION
               </button>
             )}
+
+            {/* End of Day 1 Projector Showcase Toggle */}
+            {isIpl && (
+              <button
+                type="button"
+                onClick={handleToggleDay1Summary}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold cursor-pointer transition-all shadow-md ${
+                  auction.projectorOverlay?.type === 'DAY_1_SUMMARY'
+                    ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 ring-2 ring-amber-300 animate-pulse'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
+                }`}
+                title="Broadcast Day 1 Summary & Squads to Projector"
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                {auction.projectorOverlay?.type === 'DAY_1_SUMMARY'
+                  ? 'EXIT DAY 1 SUMMARY'
+                  : 'END OF DAY 1'}
+              </button>
+            )}
           </div>
         }
       />
@@ -1627,6 +1668,22 @@ export default function CommitteeAdminDashboard() {
                       >
                         {auction.status === AUCTION_STATES.PAUSED ? 'RESUME' : 'PAUSE'}
                       </button>
+
+                      {isIpl && (
+                        <button
+                          type="button"
+                          onClick={handleToggleDay1Summary}
+                          className={`inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl font-bold text-xs uppercase cursor-pointer transition-all ${
+                            auction.projectorOverlay?.type === 'DAY_1_SUMMARY'
+                              ? 'bg-amber-400 text-slate-950 font-extrabold ring-2 ring-amber-300'
+                              : 'bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-500/50'
+                          }`}
+                          title="Toggle Day 1 Summary Showcase on Projector"
+                        >
+                          <Trophy className="w-3.5 h-3.5" />
+                          {auction.projectorOverlay?.type === 'DAY_1_SUMMARY' ? 'EXIT DAY 1' : 'DAY 1 END'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1647,16 +1704,34 @@ export default function CommitteeAdminDashboard() {
                         : 'No items left in the queue. You can add items or re-auction unsold items.'}
                     </p>
                   </div>
-                  {auction.queue?.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handleStartItem()}
-                      className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm uppercase tracking-wider shadow-xl shadow-amber-500/20 cursor-pointer"
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                      Start Next Item ({auction.queue[0].name})
-                    </button>
-                  )}
+                  <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    {auction.queue?.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleStartItem()}
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm uppercase tracking-wider shadow-xl shadow-amber-500/20 cursor-pointer"
+                      >
+                        <Play className="w-4 h-4 fill-current" />
+                        Start Next Item ({auction.queue[0].name})
+                      </button>
+                    )}
+                    {isIpl && (
+                      <button
+                        type="button"
+                        onClick={handleToggleDay1Summary}
+                        className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-extrabold text-sm uppercase tracking-wider transition-all cursor-pointer shadow-xl ${
+                          auction.projectorOverlay?.type === 'DAY_1_SUMMARY'
+                            ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 ring-2 ring-amber-300 animate-pulse'
+                            : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/30'
+                        }`}
+                      >
+                        <Trophy className="w-4 h-4" />
+                        {auction.projectorOverlay?.type === 'DAY_1_SUMMARY'
+                          ? 'Exit Day 1 Summary'
+                          : 'End of Day 1 (Projector Summary)'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
