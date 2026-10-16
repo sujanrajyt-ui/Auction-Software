@@ -1792,7 +1792,6 @@ export default function CommitteeAdminDashboard() {
 
                         <div className="flex items-center justify-between text-[10px] text-slate-400 flex-wrap gap-1">
                           <span>Squad: {team.squadCount}</span>
-                          {isIpl && <span>✈️ {overseasCount}/8</span>}
                           {team.rtmTotal > 0 && (
                             <span className="px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">
                               RTM {team.rtmRemaining}/{team.rtmTotal}

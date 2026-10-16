@@ -36,10 +36,8 @@ The server is currently running at **`http://localhost:3000`**.
 | **Real Madrid** | `RMA` | `1001` | `#FEBE10` / `#00529F` | €1 Billion |
 | **Barcelona** | `BAR` | `1002` | `#A50044` / `#004D98` | €1 Billion |
 | **Manchester City** | `MCI` | `1003` | `#6CABDD` / `#1C2C5B` | €1 Billion |
-| **Liverpool** | `LIV` | `1004` | `#C8102E` / `#00B2A9` | €1 Billion |
-| **Arsenal** | `ARS` | `1005` | `#EF0107` / `#063672` | €1 Billion |
-| **Bayern Munich** | `BAY` | `1006` | `#DC052D` / `#0066B2` | €1 Billion |
-| **PSG** | `PSG` | `1007` | `#004170` / `#DA291C` | €1 Billion |
-| **Manchester United** | `MUN` | `1008` | `#DA291C` / `#FBE122` | €1 Billion |
-| **AC Milan** | `MIL` | `1009` | `#FB090B` / `#111111` | €1 Billion |
-| **Chelsea** | `CHE` | `1010` | `#034694` / `#DBA111` | €1 Billion |
+| **Arsenal** | `ARS` | `1004` | `#EF0107` / `#063672` | €1 Billion |
+| **Bayern Munich** | `BAY` | `1005` | `#DC052D` / `#0066B2` | €1 Billion |
+| **PSG** | `PSG` | `1006` | `#004170` / `#DA291C` | €1 Billion |
+| **Manchester United** | `MUN` | `1007` | `#DA291C` / `#FBE122` | €1 Billion |
+| **AC Milan** | `MIL` | `1008` | `#FB090B` / `#111111` | €1 Billion |

@@ -208,11 +208,6 @@ export default function TeamDashboard() {
                       RTM Cards: {myTeam.rtmRemaining} / {myTeam.rtmTotal}
                     </span>
                   )}
-                  {isIpl && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/35 text-sky-300 text-[10px] font-extrabold">
-                      ✈️ {myOverseasCount}/8
-                    </span>
-                  )}
                 </div>
                 <h1 className="font-display text-2xl sm:text-4xl font-extrabold text-white tracking-tight mt-1">
                   {myTeam.name.toUpperCase()}
@@ -842,11 +837,6 @@ export default function TeamDashboard() {
                                 RTM: {activeTeam.rtmRemaining} / {activeTeam.rtmTotal}
                               </span>
                             )}
-                            {isIpl && (
-                              <span className="px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/35 text-sky-300 text-[10px] font-extrabold">
-                                ✈️ {getTeamOverseasCount(activeTeam)}/8 Overseas
-                              </span>
-                            )}
                           </div>
                           <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-white mt-1">
                             {activeTeam.name.toUpperCase()}
@@ -1021,12 +1011,6 @@ export default function TeamDashboard() {
                                 <span>Squad: <strong className="text-white">{t.squadCount}</strong></span>
                                 <span>•</span>
                                 <span>Spent: <strong className="text-rose-300 font-mono-num">{formatCurrency(t.totalSpent, cur)}</strong></span>
-                                {isIpl && (
-                                  <>
-                                    <span>•</span>
-                                    <span>✈️ {getTeamOverseasCount(t)}/8</span>
-                                  </>
-                                )}
                               </div>
                             </div>
                           </div>

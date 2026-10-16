@@ -406,17 +406,8 @@ export function VistaHeader({
   );
 }
 
-export function OverseasPlane({ playerName, auction, className = 'ml-1.5 text-sm' }) {
-  if (!isOverseasPlayer(playerName, auction)) return null;
-  return (
-    <span
-      title="Overseas Player"
-      aria-label="Overseas Player"
-      className={`inline-block select-none align-middle ${className}`}
-    >
-      ✈️
-    </span>
-  );
+export function OverseasPlane() {
+  return null;
 }
 
 export function PlayerStatsBar() {

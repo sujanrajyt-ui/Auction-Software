@@ -420,43 +420,6 @@ export default function PlayersDirectoryPage() {
                 </select>
                 <ArrowUpDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
               </div>
-
-              {/* Overseas Toggle */}
-              <div className="inline-flex rounded-2xl bg-slate-900 border border-slate-800 p-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setOverseasFilter('ALL')}
-                  className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition ${
-                    overseasFilter === 'ALL'
-                      ? 'bg-amber-500 text-slate-950 shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOverseasFilter('OVERSEAS')}
-                  className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition ${
-                    overseasFilter === 'OVERSEAS'
-                      ? 'bg-amber-500 text-slate-950 shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  ✈️ Overseas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOverseasFilter('DOMESTIC')}
-                  className={`px-3 py-1.5 text-xs font-extrabold rounded-xl transition ${
-                    overseasFilter === 'DOMESTIC'
-                      ? 'bg-amber-500 text-slate-950 shadow'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  Domestic
-                </button>
-              </div>
             </div>
           </div>
 

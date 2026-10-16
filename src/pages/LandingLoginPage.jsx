@@ -665,13 +665,6 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                 {showcaseSummary.queued}
               </div>
             </div>
-
-            <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-indigo-950/30 border border-indigo-500/30 text-center">
-              <div className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-300">Overseas Stars</div>
-              <div className="font-mono-num font-black text-xl sm:text-2xl text-indigo-200 mt-1">
-                {showcaseSummary.overseasCount}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -776,20 +769,6 @@ export default function LandingLoginPage({ mode = 'TEAM' }) {
                   {st.label}
                 </button>
               ))}
-
-              {/* Overseas Toggle */}
-              <div className="h-4 w-px bg-slate-800 mx-1 hidden sm:block" />
-              <button
-                type="button"
-                onClick={() => setOverseasFilter(overseasFilter === 'OVERSEAS' ? 'ALL' : 'OVERSEAS')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                  overseasFilter === 'OVERSEAS'
-                    ? 'bg-indigo-500 text-white font-black'
-                    : 'bg-slate-950 hover:bg-slate-800 text-slate-400 border border-slate-800'
-                }`}
-              >
-                <span>✈️ Overseas Only</span>
-              </button>
             </div>
           </div>
         </div>

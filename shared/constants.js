@@ -588,7 +588,7 @@ export const AUCTION_TEMPLATES = {
     id: 'FOOTBALL_DEFAULT',
     name: 'Football Auction — Vista Presents The Verdict',
     committeeName: 'European Football Committee',
-    description: '10 European Giant Clubs • €1 Billion Starting Purse • 13 Active Pools + 20-Player Legends Pool',
+    description: '8 European Giant Clubs • €1 Billion Starting Purse • 13 Active Pools + 20-Player Legends Pool',
     currency: 'EUR',
     startingPurse: 1_000_000_000, // €1 Billion per team (Section 39)
     maxRetentionsPerTeam: 3,
@@ -623,13 +623,11 @@ export const AUCTION_TEMPLATES = {
       { name: 'Real Madrid', code: 'RMA', pin: '1001' },
       { name: 'Barcelona', code: 'BAR', pin: '1002' },
       { name: 'Manchester City', code: 'MCI', pin: '1003' },
-      { name: 'Liverpool', code: 'LIV', pin: '1004' },
-      { name: 'Arsenal', code: 'ARS', pin: '1005' },
-      { name: 'Bayern Munich', code: 'BAY', pin: '1006' },
-      { name: 'PSG', code: 'PSG', pin: '1007' },
-      { name: 'Manchester United', code: 'MUN', pin: '1008' },
-      { name: 'AC Milan', code: 'MIL', pin: '1009' },
-      { name: 'Chelsea', code: 'CHE', pin: '1010' }
+      { name: 'Arsenal', code: 'ARS', pin: '1004' },
+      { name: 'Bayern Munich', code: 'BAY', pin: '1005' },
+      { name: 'PSG', code: 'PSG', pin: '1006' },
+      { name: 'Manchester United', code: 'MUN', pin: '1007' },
+      { name: 'AC Milan', code: 'MIL', pin: '1008' }
     ],
     items: [
       // Marquee M1 (€50M)
@@ -1246,35 +1244,12 @@ export function isIplAuction(auction) {
   );
 }
 
-export function isOverseasPlayer(itemOrName) {
-  if (!itemOrName) return false;
-  const rawName =
-    typeof itemOrName === 'string'
-      ? itemOrName
-      : itemOrName.name || itemOrName.playerName || '';
-  if (typeof itemOrName === 'object' && itemOrName.isOverseas === true) return true;
-  const lowerRaw = String(rawName).toLowerCase();
-  if (
-    lowerRaw.includes('(overseas)') ||
-    lowerRaw.includes('[os]') ||
-    lowerRaw.includes('overseas') ||
-    lowerRaw.includes('✈️')
-  ) {
-    return true;
-  }
-  const clean = cleanPlayerKey(rawName);
-  const entry = IPL_PLAYER_STATS[clean];
-  if (entry) {
-    return Boolean(entry.isOverseas || (entry.nation && entry.nation !== 'India'));
-  }
+export function isOverseasPlayer() {
   return false;
 }
 
-export function getTeamOverseasCount(team) {
-  if (!team) return 0;
-  const retCount = (team.retentions || []).filter(r => isOverseasPlayer(r)).length;
-  const purCount = (team.purchases || []).filter(p => isOverseasPlayer(p)).length;
-  return retCount + purCount;
+export function getTeamOverseasCount() {
+  return 0;
 }
 
 function hashPlayerSeed(str) {
@@ -1501,13 +1476,11 @@ export function getPlayerStats(itemOrName, poolNameOrAuction, maybeAuction) {
       'Real Madrid',
       'Barcelona',
       'Manchester City',
-      'Liverpool',
       'Arsenal',
       'Bayern Munich',
       'PSG',
-      'Chelsea',
-      'AC Milan',
-      'Inter Milan'
+      'Manchester United',
+      'AC Milan'
     ];
     const lastTeam = itemObj?.lastTeam || clubs[seed % clubs.length];
     const pos = itemObj?.roleOrPosition || poolName || 'Forward / Midfielder';

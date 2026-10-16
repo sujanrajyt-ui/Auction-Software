@@ -354,8 +354,7 @@ export function ensureSeedData({ forceReset = false } = {}) {
       { teamName: 'Barcelona', playerName: 'Gavi', amount: 50_000_000 },
       { teamName: 'Manchester City', playerName: 'Phil Foden', amount: 75_000_000 },
       { teamName: 'Arsenal', playerName: 'Martin Ødegaard', amount: 70_000_000 },
-      { teamName: 'Bayern Munich', playerName: 'Joshua Kimmich', amount: 60_000_000 },
-      { teamName: 'Chelsea', playerName: 'Enzo Fernández', amount: 55_000_000 }
+      { teamName: 'Bayern Munich', playerName: 'Joshua Kimmich', amount: 60_000_000 }
     ];
     sampleRetentions.forEach((sr, idx) => {
       const team = fbTeams.find(t => t.name === sr.teamName);
