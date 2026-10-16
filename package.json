@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "node --no-warnings server/index.js --dev",
     "build": "vite build",
-    "start": "vite build && node --no-warnings server/index.js",
+    "start": "node --no-warnings server/index.js",
     "seed": "node --no-warnings server/seed.js --reset"
   },
   "dependencies": {
