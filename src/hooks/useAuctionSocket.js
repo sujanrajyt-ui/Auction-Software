@@ -70,7 +70,34 @@ export function useAuctionSocket(auctionId, teamId = null) {
         };
       }
 
-      setAuction(nextAuction);
+      setAuction(prev => {
+        if (!prev) return nextAuction;
+
+        // 1. Never let a stale background poll wipe out an active DAY_1_SUMMARY
+        let resolvedOverlay = nextAuction.projectorOverlay;
+        if (prev.projectorOverlay?.type === 'DAY_1_SUMMARY' && !nextAuction.projectorOverlay) {
+          resolvedOverlay = prev.projectorOverlay;
+        }
+
+        // 2. Never let a stale background poll with fewer items wipe out newly added players
+        let resolvedItems = nextAuction.items;
+        let resolvedQueue = nextAuction.queue;
+        if (
+          Array.isArray(prev.items) &&
+          Array.isArray(nextAuction.items) &&
+          prev.items.length > nextAuction.items.length
+        ) {
+          resolvedItems = prev.items;
+          resolvedQueue = prev.queue;
+        }
+
+        return {
+          ...nextAuction,
+          projectorOverlay: resolvedOverlay,
+          items: resolvedItems,
+          queue: resolvedQueue
+        };
+      });
       setConnected(true);
       setError(null);
       setLoading(false);
@@ -212,10 +239,25 @@ export function useAuctionSocket(auctionId, teamId = null) {
         fetchLatestState(false);
       };
 
+      const onItemAdded = ({ payload }) => {
+        if (payload?.auction) {
+          setAuction(prev => {
+            if (!prev) return payload.auction;
+            return {
+              ...prev,
+              items: payload.auction.items || prev.items,
+              queue: payload.auction.queue || prev.queue,
+              stats: payload.auction.stats || prev.stats
+            };
+          });
+        }
+      };
+
       supabaseChannel
         .on('broadcast', { event: 'DAY_1_SUMMARY_TOGGLED' }, onDay1Toggle)
         .on('broadcast', { event: 'auction:state_change' }, onStateChange)
         .on('broadcast', { event: 'auction:compact_state' }, onCompactState)
+        .on('broadcast', { event: 'auction:item_added' }, onItemAdded)
         .on('broadcast', { event: 'auction:event' }, onAuctionEvent)
         .on('broadcast', { event: 'auction:sync' }, onAuctionSync);
 
@@ -280,10 +322,12 @@ export function useAuctionSocket(auctionId, teamId = null) {
       });
     }
 
-    // 3. Fallback polling as a safety net (relaxed to 2.5s)
+    // 3. Fallback polling ONLY when WebSocket is NOT connected (prevents overwriting live state)
     const pollInterval = setInterval(() => {
-      fetchLatestState(true);
-    }, 2500);
+      if (!wsConnectedRef.current) {
+        fetchLatestState(true);
+      }
+    }, 10000);
 
     return () => {
       clearInterval(pollInterval);

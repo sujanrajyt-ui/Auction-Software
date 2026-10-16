@@ -21,6 +21,7 @@ import {
 import { ensureSeedData, createAuctionInstance } from './seed.js';
 import { resolveItemImage, resolveTeamIdentity, isRealOnlineImage } from './imageResolver.js';
 import { syncFromNeonIfNeeded, syncToNeon, isNeonEnabled } from './neonSync.js';
+import { syncFromSupabaseIfNeeded, syncToSupabase } from './supabaseSync.js';
 import { broadcastToSupabase } from './supabaseRealtime.js';
 import {
   AUCTION_STATES,
@@ -157,26 +158,37 @@ const io = new SocketIOServer(server, {
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
 
-// Neon PostgreSQL synchronization middleware (active whenever ENABLE_NEON is true)
+// Cloud database synchronization middleware (Supabase & Neon)
 app.use('/api', async (req, res, next) => {
+  try {
+    await syncFromSupabaseIfNeeded();
+  } catch {}
+
   if (isNeonEnabled()) {
     try {
       await syncFromNeonIfNeeded();
     } catch (err) {
       console.warn('[Neon Sync Skipped]:', err.message);
     }
-    const origJson = res.json.bind(res);
-    res.json = async body => {
-      if (req.method !== 'GET' || req._didMutateDb) {
+  }
+
+  const origJson = res.json.bind(res);
+  res.json = async body => {
+    if (req.method !== 'GET' || req._didMutateDb) {
+      try {
+        await syncToSupabase();
+      } catch {}
+
+      if (isNeonEnabled()) {
         try {
           await syncToNeon();
         } catch (err) {
           console.warn('[Neon Push Skipped]:', err.message);
         }
       }
-      return origJson(body);
-    };
-  }
+    }
+    return origJson(body);
+  };
   next();
 });
 

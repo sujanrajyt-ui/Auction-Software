@@ -480,7 +480,7 @@ export default function CommitteeAdminDashboard() {
         ? parseCurrencyInput(newItemPrice, cur)
         : matchingPool?.defaultBasePrice || 10_000_000;
 
-      await apiFetch(`/api/auctions/${auctionId}/items`, {
+      const res = await apiFetch(`/api/auctions/${auctionId}/items`, {
         method: 'POST',
         body: JSON.stringify({
           name: newItemName,
@@ -490,6 +490,12 @@ export default function CommitteeAdminDashboard() {
           queuePosition: newItemQueuePos !== '' ? Number(newItemQueuePos) : undefined
         })
       });
+      if (res?.auction) {
+        if (setAuction) setAuction(res.auction);
+        if (broadcastLiveEvent) {
+          broadcastLiveEvent('auction:item_added', { auction: res.auction, itemId: res.itemId });
+        }
+      }
       setNewItemName('');
       setNewItemPrice('');
       setNewItemQueuePos('');
@@ -516,6 +522,12 @@ export default function CommitteeAdminDashboard() {
         method: 'POST',
         body: JSON.stringify({ items: parsed })
       });
+      if (res?.auction) {
+        if (setAuction) setAuction(res.auction);
+        if (broadcastLiveEvent) {
+          broadcastLiveEvent('auction:item_added', { auction: res.auction });
+        }
+      }
       const warnCount = (errors?.length || 0) + (res.warnings?.length || 0);
       showNotice(
         `Imported ${res.importedCount} items! ${
@@ -1148,7 +1160,7 @@ export default function CommitteeAdminDashboard() {
     if (!playerName) return;
     try {
       setBusyAction(true);
-      await apiFetch(`/api/auctions/${auctionId}/items`, {
+      const res = await apiFetch(`/api/auctions/${auctionId}/items`, {
         method: 'POST',
         body: JSON.stringify({
           name: playerName,
@@ -1157,6 +1169,12 @@ export default function CommitteeAdminDashboard() {
           poolId: pool.id
         })
       });
+      if (res?.auction) {
+        if (setAuction) setAuction(res.auction);
+        if (broadcastLiveEvent) {
+          broadcastLiveEvent('auction:item_added', { auction: res.auction, itemId: res.itemId });
+        }
+      }
       setQuickAddPoolPlayer(prev => ({ ...prev, [pool.id]: '' }));
       showNotice(`Added ${playerName} to ${pool.name}.`);
     } catch (err) {
