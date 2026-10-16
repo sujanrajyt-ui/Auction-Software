@@ -24,11 +24,11 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// On Vercel, if DB does not exist in /tmp, copy the bundled DB from the repository
-if (process.env.VERCEL && !fs.existsSync(DB_PATH) && fs.existsSync(BUNDLED_DB_PATH)) {
+// On Vercel, always ensure DB_PATH has the exact bundled DB from the repository
+if (process.env.VERCEL && fs.existsSync(BUNDLED_DB_PATH)) {
   try {
     fs.copyFileSync(BUNDLED_DB_PATH, DB_PATH);
-    console.log('[DB Bootstrap] Successfully copied bundled verdict.sqlite to /tmp');
+    console.log('[DB Bootstrap] Freshly synchronized bundled verdict.sqlite to /tmp');
   } catch (err) {
     console.warn('[DB Bootstrap Warning]: Failed to copy bundled DB:', err.message);
   }

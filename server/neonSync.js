@@ -31,6 +31,9 @@ export function getNeonUrl() {
 }
 
 export function isNeonEnabled() {
+  if (process.env.ENABLE_NEON !== 'true') {
+    return false;
+  }
   return Boolean(getNeonUrl());
 }
 
