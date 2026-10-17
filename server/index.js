@@ -3025,6 +3025,11 @@ app.post('/api/auctions/:auctionId/items/:itemId/transfer-sale', requireAuctionA
 
     broadcastAuctionState(auctionId, { type: 'PURCHASE_TRANSFERRED', sound: 'TRANSITION' });
     res.json({ auction: getHydratedAuction(auctionId) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Manual Allot / Sell player directly in Pool / Showcase
 app.post('/api/auctions/:auctionId/items/:itemId/manual-allot', requireAuctionAdmin, (req, res) => {
   const { auctionId, itemId } = req.params;
