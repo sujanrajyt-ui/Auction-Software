@@ -1096,7 +1096,14 @@ app.post('/api/platform/backup/restore', requireAdmin, async (req, res) => {
           for (const table of tablesPresent) {
             const rows = snapshot[table];
             if (!rows || rows.length === 0) continue;
-            const cols = Object.keys(rows[0]);
+            const tableColsSet = new Set(
+              db
+                .prepare(`PRAGMA table_info(${table})`)
+                .all()
+                .map(c => c.name)
+            );
+            const cols = Object.keys(rows[0]).filter(c => tableColsSet.has(c));
+            if (cols.length === 0) continue;
             const placeholders = cols.map(() => '?').join(', ');
             const stmt = db.prepare(
               `INSERT OR REPLACE INTO ${table} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
@@ -1282,8 +1289,7 @@ app.post('/api/platform/backup/restore', requireAdmin, async (req, res) => {
           .get(t.id);
         const spent = Number(soldItemsRow?.totalSpent) || 0;
         const remaining = Math.max(0, (t.startingPurse || 0) - spent);
-        db.prepare('UPDATE teams SET spent = ?, remainingPurse = ? WHERE id = ?').run(
-          spent,
+        db.prepare('UPDATE teams SET remainingPurse = ? WHERE id = ?').run(
           remaining,
           t.id
         );

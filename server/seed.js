@@ -241,7 +241,11 @@ export function ensureSeedData({ forceReset = false } = {}) {
             for (const table of TABLES_IN_ORDER) {
               const rows = Array.isArray(dump[table]) ? dump[table] : [];
               if (rows.length === 0) continue;
-              const cols = Object.keys(rows[0]);
+              const tableColsSet = new Set(
+                db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name)
+              );
+              const cols = Object.keys(rows[0]).filter(c => tableColsSet.has(c));
+              if (cols.length === 0) continue;
               const placeholders = cols.map(() => '?').join(', ');
               const stmt = db.prepare(
                 `INSERT OR REPLACE INTO ${table} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
