@@ -1056,44 +1056,256 @@ app.post('/api/platform/backup/save', requireAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/platform/backup/restore', requireSuperAdmin, async (req, res) => {
-  const { snapshot } = req.body || {};
+app.post('/api/platform/backup/restore', requireAdmin, async (req, res) => {
+  let { snapshot, auctionId } = req.body || {};
+  if (!snapshot && typeof req.body === 'object') {
+    snapshot = req.body;
+  }
   if (!snapshot || typeof snapshot !== 'object') {
     return res.status(400).json({ error: 'Invalid snapshot data provided.' });
   }
 
+  // Unwrap if nested under snapshot
+  if (snapshot.snapshot && typeof snapshot.snapshot === 'object') {
+    snapshot = snapshot.snapshot;
+  }
+
   try {
+    let restoredItemsCount = 0;
+    let restoredSoldCount = 0;
+    let restoredTeamsCount = 0;
+
     runTransaction(() => {
-      db.exec('PRAGMA foreign_keys = OFF;');
-      try {
-        for (const table of [...BACKUP_TABLES_IN_ORDER].reverse()) {
-          db.prepare(`DELETE FROM ${table}`).run();
-        }
-        for (const table of BACKUP_TABLES_IN_ORDER) {
-          const rows = Array.isArray(snapshot[table]) ? snapshot[table] : [];
-          if (rows.length === 0) continue;
-          const cols = Object.keys(rows[0]);
-          const placeholders = cols.map(() => '?').join(', ');
-          const stmt = db.prepare(
-            `INSERT INTO ${table} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
-          );
-          for (const row of rows) {
-            stmt.run(...cols.map(c => (row[c] === undefined ? null : row[c])));
+      // Check if it's a full or partial database table dump
+      const tablesPresent = BACKUP_TABLES_IN_ORDER.filter(
+        t => Array.isArray(snapshot[t]) && snapshot[t].length > 0
+      );
+
+      if (tablesPresent.length > 0) {
+        // Tables dump format
+        db.exec('PRAGMA foreign_keys = OFF;');
+        try {
+          // If full dump (has both auctions and users), delete the tables first
+          const isFullDump = tablesPresent.includes('auctions') && tablesPresent.includes('items');
+          if (isFullDump) {
+            for (const table of [...tablesPresent].reverse()) {
+              db.prepare(`DELETE FROM ${table}`).run();
+            }
           }
+
+          for (const table of tablesPresent) {
+            const rows = snapshot[table];
+            if (!rows || rows.length === 0) continue;
+            const cols = Object.keys(rows[0]);
+            const placeholders = cols.map(() => '?').join(', ');
+            const stmt = db.prepare(
+              `INSERT OR REPLACE INTO ${table} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
+            );
+            for (const row of rows) {
+              stmt.run(...cols.map(c => (row[c] === undefined ? null : row[c])));
+            }
+          }
+        } finally {
+          db.exec('PRAGMA foreign_keys = ON;');
         }
-      } finally {
-        db.exec('PRAGMA foreign_keys = ON;');
+
+        if (snapshot.items) {
+          restoredItemsCount = snapshot.items.length;
+          restoredSoldCount = snapshot.items.filter(i => i.status === 'SOLD').length;
+        }
+        if (snapshot.teams) {
+          restoredTeamsCount = snapshot.teams.length;
+        }
+      } else {
+        // Raw array or items-based JSON
+        const itemsList = Array.isArray(snapshot)
+          ? snapshot
+          : Array.isArray(snapshot.items)
+          ? snapshot.items
+          : Array.isArray(snapshot.players)
+          ? snapshot.players
+          : [];
+
+        if (itemsList.length === 0) {
+          throw new Error('No items or recognizable tables found in JSON.');
+        }
+
+        // Determine target auction
+        let targetAuctionId = auctionId || snapshot.auctionId;
+        if (!targetAuctionId) {
+          const firstAuction = db
+            .prepare('SELECT id FROM auctions ORDER BY createdAt ASC LIMIT 1')
+            .get();
+          targetAuctionId = firstAuction ? firstAuction.id : 'auc_acd90acff15945';
+        }
+
+        const teams = db.prepare('SELECT * FROM teams WHERE auctionId = ?').all(targetAuctionId);
+        const teamMap = new Map();
+        for (const t of teams) {
+          teamMap.set(t.id.toLowerCase(), t);
+          if (t.name) teamMap.set(t.name.toLowerCase(), t);
+          if (t.code) teamMap.set(t.code.toLowerCase(), t);
+          if (t.shortName) teamMap.set(t.shortName.toLowerCase(), t);
+        }
+
+        const pools = db.prepare('SELECT * FROM pools WHERE auctionId = ?').all(targetAuctionId);
+        const poolMap = new Map(pools.map(p => [p.name.toLowerCase(), p]));
+
+        const existingItems = db
+          .prepare('SELECT * FROM items WHERE auctionId = ?')
+          .all(targetAuctionId);
+        const existingByName = new Map();
+        for (const it of existingItems) {
+          const norm = normalizePlayerName(it.name);
+          if (norm) existingByName.set(norm, it);
+        }
+
+        const now = new Date().toISOString();
+        const maxOrderRow = db
+          .prepare(
+            'SELECT COALESCE(MAX(queueOrder), 0) AS maxOrder FROM items WHERE auctionId = ?'
+          )
+          .get(targetAuctionId);
+        let nextOrder = (Number(maxOrderRow?.maxOrder) || 0) + 1;
+
+        for (const raw of itemsList) {
+          const name = (raw.name || raw.playerName || '').trim();
+          if (!name) continue;
+          const norm = normalizePlayerName(name);
+          const status = (raw.status || 'QUEUED').toUpperCase();
+          const basePrice = Number(raw.basePrice || raw.price || 20000000);
+          const poolName = raw.poolName || raw.category || raw.pool || 'General';
+
+          let poolObj = poolMap.get(poolName.toLowerCase());
+          if (!poolObj) {
+            const newPoolId = uid('pool');
+            db.prepare(`
+              INSERT INTO pools (id, auctionId, name, defaultBasePrice, isLegendPool, sortOrder, createdAt)
+              VALUES (?, ?, ?, ?, 0, ?, ?)
+            `).run(newPoolId, targetAuctionId, poolName, basePrice, poolMap.size, now);
+            poolObj = { id: newPoolId, name: poolName };
+            poolMap.set(poolName.toLowerCase(), poolObj);
+          }
+
+          let soldToTeamId = null;
+          let soldAmount = null;
+          let soldAt = null;
+
+          if (status === 'SOLD') {
+            soldAmount = Number(raw.soldAmount || raw.finalPrice || raw.amount || basePrice);
+            const rawTeam = String(
+              raw.soldToTeamId || raw.soldTo || raw.team || raw.teamId || ''
+            ).toLowerCase();
+            const matchedTeam = teamMap.get(rawTeam);
+            if (matchedTeam) {
+              soldToTeamId = matchedTeam.id;
+            } else {
+              for (const [key, t] of teamMap.entries()) {
+                if (key.includes(rawTeam) || (rawTeam && rawTeam.includes(key))) {
+                  soldToTeamId = t.id;
+                  break;
+                }
+              }
+            }
+            soldAt = raw.soldAt || now;
+            restoredSoldCount++;
+          }
+
+          const existing = existingByName.get(norm);
+          if (existing) {
+            db.prepare(`
+              UPDATE items SET
+                status = ?,
+                soldToTeamId = COALESCE(?, soldToTeamId),
+                soldAmount = COALESCE(?, soldAmount),
+                soldAt = COALESCE(?, soldAt),
+                basePrice = COALESCE(?, basePrice),
+                poolId = ?,
+                poolName = ?,
+                updatedAt = ?
+              WHERE id = ?
+            `).run(
+              status,
+              soldToTeamId,
+              soldAmount,
+              soldAt,
+              basePrice,
+              poolObj.id,
+              poolObj.name,
+              now,
+              existing.id
+            );
+          } else {
+            const newId = raw.id || uid('item');
+            const initialImg =
+              raw.imageUrl ||
+              raw.image ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                name
+              )}&background=111827&color=F59E0B&size=400&bold=true`;
+            db.prepare(`
+              INSERT INTO items (
+                id, auctionId, name, imageUrl, basePrice, originalBasePrice,
+                poolId, poolName, status, queueOrder, currentBid,
+                highestBidderTeamId, soldToTeamId, soldAmount, soldAt,
+                reauctionCount, createdAt, updatedAt
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, 0, ?, ?)
+            `).run(
+              newId,
+              targetAuctionId,
+              name,
+              initialImg,
+              basePrice,
+              basePrice,
+              poolObj.id,
+              poolObj.name,
+              status,
+              nextOrder++,
+              soldToTeamId,
+              soldAmount,
+              soldAt,
+              now,
+              now
+            );
+          }
+          restoredItemsCount++;
+        }
+      }
+
+      // Always recalculate all team purses from their sold items
+      const allTeams = db.prepare('SELECT id, startingPurse FROM teams').all();
+      for (const t of allTeams) {
+        const soldItemsRow = db
+          .prepare(
+            "SELECT COALESCE(SUM(soldAmount), 0) AS totalSpent FROM items WHERE soldToTeamId = ? AND status = 'SOLD'"
+          )
+          .get(t.id);
+        const spent = Number(soldItemsRow?.totalSpent) || 0;
+        const remaining = Math.max(0, (t.startingPurse || 0) - spent);
+        db.prepare('UPDATE teams SET spent = ?, remainingPurse = ? WHERE id = ?').run(
+          spent,
+          remaining,
+          t.id
+        );
       }
     });
 
+    // Checkpoint SQLite WAL
     try {
       db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
     } catch {}
 
+    // Update verdict_seed.json so it persists across Render restarts
     try {
+      const dump = {};
+      for (const table of BACKUP_TABLES_IN_ORDER) {
+        dump[table] = db.prepare(`SELECT * FROM ${table}`).all();
+      }
       const seedPath = path.resolve(process.cwd(), 'data', 'verdict_seed.json');
-      fs.writeFileSync(seedPath, JSON.stringify(snapshot, null, 2), 'utf-8');
-    } catch {}
+      fs.writeFileSync(seedPath, JSON.stringify(dump, null, 2), 'utf-8');
+    } catch (err) {
+      console.warn('[Restore Warning]: Failed to update verdict_seed.json:', err.message);
+    }
 
     if (isNeonEnabled()) {
       try {
@@ -1105,12 +1317,16 @@ app.post('/api/platform/backup/restore', requireSuperAdmin, async (req, res) => 
 
     recordAudit({
       user: req.user,
-      action: 'Data snapshot restored',
+      action: 'Data snapshot / JSON restored',
       entityType: 'PLATFORM',
       entityId: 'restore',
       entityName: 'Database Restored from Backup',
       previousValue: null,
-      newValue: { timestamp: new Date().toISOString() }
+      newValue: {
+        timestamp: new Date().toISOString(),
+        restoredItemsCount,
+        restoredSoldCount
+      }
     });
 
     io.emit('platform:updated');
@@ -1119,8 +1335,14 @@ app.post('/api/platform/backup/restore', requireSuperAdmin, async (req, res) => 
       broadcastAuctionState(a.id);
     }
 
-    res.json({ ok: true, message: 'Data restored successfully.' });
+    res.json({
+      ok: true,
+      message: `Data successfully restored! Loaded ${restoredItemsCount || 'all'} items (${restoredSoldCount} sold).`,
+      restoredItemsCount,
+      restoredSoldCount
+    });
   } catch (err) {
+    console.error('[Restore Error]:', err);
     res.status(500).json({ error: 'Failed to restore data: ' + err.message });
   }
 });

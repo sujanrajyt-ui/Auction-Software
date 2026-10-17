@@ -36,7 +36,8 @@ import {
   FolderPlus,
   Camera,
   Trophy,
-  Moon
+  Moon,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAuctionSocket } from '../hooks/useAuctionSocket.js';
@@ -45,7 +46,9 @@ import {
   TeamLogo,
   ItemImage,
   StatusBadge,
-  OverseasPlane
+  OverseasPlane,
+  UploadDataButton,
+  SaveDataButton
 } from '../components/Common.jsx';
 import {
   AUCTION_STATES,
@@ -2557,6 +2560,11 @@ export default function CommitteeAdminDashboard() {
                     <Download className="w-4 h-4" />
                     Download Template
                   </button>
+                  <UploadDataButton
+                    auctionId={auctionId}
+                    buttonLabel="Upload JSON / Sold Players"
+                    className="!py-2.5 !px-3.5 !text-xs !bg-amber-500 hover:!bg-amber-400 !text-slate-950 font-extrabold !border-amber-400"
+                  />
                 </div>
               </div>
             </div>
@@ -4108,6 +4116,23 @@ export default function CommitteeAdminDashboard() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Middle Full-Width: Data Backup & Instant JSON Restore */}
+            <div className="lg:col-span-12 rounded-3xl bg-slate-900/90 border border-slate-800 p-6 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="font-display text-lg font-bold text-white flex items-center gap-2">
+                  <Database className="w-5 h-5 text-indigo-400" />
+                  Data Backup & JSON Restore
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+                  Download a complete backup JSON snapshot of this auction with all players, sold prices, and team squads, or upload any JSON file to restore past sold players and team finances.
+                </p>
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <SaveDataButton />
+                <UploadDataButton auctionId={auctionId} buttonLabel="Upload Backup JSON" />
               </div>
             </div>
 

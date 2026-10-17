@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Volume2,
@@ -13,7 +13,11 @@ import {
   Users,
   Save,
   Check,
-  RefreshCw
+  RefreshCw,
+  Upload,
+  X,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 import {
   generateCrestSvgDataUri,
@@ -349,6 +353,230 @@ export function SaveDataButton() {
   );
 }
 
+export function UploadDataButton({
+  auctionId = null,
+  buttonLabel = 'Upload JSON',
+  className = ''
+}) {
+  const { apiFetch } = useAuth();
+  const fileInputRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [fileName, setFileName] = useState('');
+  const [statusMsg, setStatusMsg] = useState(null);
+
+  const handleFileSelect = e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const text = ev.target?.result;
+        const parsed = JSON.parse(text);
+
+        let items = [];
+        let teams = [];
+        if (Array.isArray(parsed)) {
+          items = parsed;
+        } else if (parsed.snapshot && typeof parsed.snapshot === 'object') {
+          items = parsed.snapshot.items || [];
+          teams = parsed.snapshot.teams || [];
+        } else {
+          items = parsed.items || parsed.players || [];
+          teams = parsed.teams || [];
+        }
+
+        const soldCount = items.filter(i => i.status === 'SOLD').length;
+        const queuedCount = items.filter(i => i.status === 'QUEUED' || !i.status).length;
+
+        setPreviewData({
+          raw: parsed,
+          totalItems: items.length,
+          soldCount,
+          queuedCount,
+          teamsCount: teams.length,
+          hasAuctions: Boolean(parsed.auctions || parsed.snapshot?.auctions)
+        });
+        setStatusMsg(null);
+        setModalOpen(true);
+      } catch (err) {
+        alert('Invalid JSON file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!previewData) return;
+    setLoading(true);
+    setStatusMsg(null);
+    try {
+      const res = await apiFetch('/api/platform/backup/restore', {
+        method: 'POST',
+        body: JSON.stringify({
+          snapshot: previewData.raw,
+          auctionId
+        })
+      });
+      setStatusMsg({
+        type: 'success',
+        text:
+          res.message ||
+          `Successfully restored! Loaded ${previewData.totalItems} items (${previewData.soldCount} sold).`
+      });
+      setTimeout(() => {
+        setModalOpen(false);
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      setStatusMsg({ type: 'error', text: 'Restore failed: ' + err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json,application/json"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        title="Upload backup JSON to restore players, sold records, and team squads"
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer border bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500 shadow-indigo-900/30 ${className}`}
+      >
+        <Upload className="w-3.5 h-3.5" />
+        <span>{buttonLabel}</span>
+      </button>
+
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-display font-bold text-white text-base">
+                    Restore / Upload Data JSON
+                  </h3>
+                  <p className="text-[11px] text-slate-400 truncate max-w-[240px]">
+                    {fileName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {previewData && (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-300">
+                  The uploaded file was recognized. Here is what will be applied to your auction database:
+                </p>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="text-[10px] uppercase font-bold text-slate-400">Total Players</div>
+                    <div className="text-base font-extrabold text-white font-mono-num">
+                      {previewData.totalItems}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/30">
+                    <div className="text-[10px] uppercase font-bold text-emerald-400">Sold Players</div>
+                    <div className="text-base font-extrabold text-emerald-300 font-mono-num">
+                      {previewData.soldCount}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="text-[10px] uppercase font-bold text-amber-400">Available / Queued</div>
+                    <div className="text-base font-extrabold text-amber-300 font-mono-num">
+                      {previewData.queuedCount}
+                    </div>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                    <div className="text-[10px] uppercase font-bold text-indigo-400">Teams / Squads</div>
+                    <div className="text-base font-extrabold text-indigo-300 font-mono-num">
+                      {previewData.teamsCount || 'Auto-linked'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>
+                    This will update your database, calculate team purses and spent amounts, and save everything so it stays permanently safe across server restarts.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {statusMsg && (
+              <div
+                className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                  statusMsg.type === 'success'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                }`}
+              >
+                {statusMsg.type === 'success' ? (
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                )}
+                <span>{statusMsg.text}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setModalOpen(false)}
+                disabled={loading}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRestore}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold text-xs cursor-pointer shadow-lg shadow-emerald-900/30"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Applying Data...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Confirm & Restore</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function VistaHeader({
   subtitle = 'Universal Multi-Committee Live Auction Platform',
   auction = null,
@@ -417,7 +645,12 @@ export function VistaHeader({
         <div className="flex items-center gap-2.5 flex-wrap">
           {rightActions}
 
-          {user?.kind === 'ADMIN' && <SaveDataButton />}
+          {user?.kind === 'ADMIN' && (
+            <div className="flex items-center gap-2">
+              <SaveDataButton />
+              <UploadDataButton auctionId={auction?.id} />
+            </div>
+          )}
 
           {auction && (
             <>
