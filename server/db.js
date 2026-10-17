@@ -24,11 +24,17 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-// On Vercel, initialize DB_PATH from the bundled repository DB if not yet present in /tmp
-if (process.env.VERCEL && !fs.existsSync(DB_PATH) && fs.existsSync(BUNDLED_DB_PATH)) {
+// On Vercel, initialize DB_PATH from the bundled repository DB if not present or outdated
+if (process.env.VERCEL && fs.existsSync(BUNDLED_DB_PATH)) {
   try {
-    fs.copyFileSync(BUNDLED_DB_PATH, DB_PATH);
-    console.log('[DB Bootstrap] Successfully initialized bundled verdict.sqlite to /tmp');
+    const shouldCopy =
+      !fs.existsSync(DB_PATH) ||
+      fs.statSync(DB_PATH).size < fs.statSync(BUNDLED_DB_PATH).size ||
+      fs.statSync(BUNDLED_DB_PATH).mtimeMs > fs.statSync(DB_PATH).mtimeMs;
+    if (shouldCopy) {
+      fs.copyFileSync(BUNDLED_DB_PATH, DB_PATH);
+      console.log('[DB Bootstrap] Successfully initialized bundled verdict.sqlite to /tmp');
+    }
   } catch (err) {
     console.warn('[DB Bootstrap Warning]: Failed to copy bundled DB:', err.message);
   }
