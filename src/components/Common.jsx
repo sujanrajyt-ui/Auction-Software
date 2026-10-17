@@ -376,16 +376,20 @@ export function UploadDataButton({
         const text = ev.target?.result;
         const parsed = JSON.parse(text);
 
+        let target = parsed;
+        if (parsed.snapshot && typeof parsed.snapshot === 'object') {
+          target = parsed.snapshot;
+        } else if (parsed.auction && typeof parsed.auction === 'object') {
+          target = parsed.auction;
+        }
+
         let items = [];
         let teams = [];
-        if (Array.isArray(parsed)) {
-          items = parsed;
-        } else if (parsed.snapshot && typeof parsed.snapshot === 'object') {
-          items = parsed.snapshot.items || [];
-          teams = parsed.snapshot.teams || [];
+        if (Array.isArray(target)) {
+          items = target;
         } else {
-          items = parsed.items || parsed.players || [];
-          teams = parsed.teams || [];
+          items = target.items || target.players || target.queue || [];
+          teams = target.teams || [];
         }
 
         const soldCount = items.filter(i => i.status === 'SOLD').length;

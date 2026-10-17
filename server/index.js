@@ -1065,9 +1065,13 @@ app.post('/api/platform/backup/restore', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'Invalid snapshot data provided.' });
   }
 
-  // Unwrap if nested under snapshot
+  // Unwrap if nested under snapshot or auction
   if (snapshot.snapshot && typeof snapshot.snapshot === 'object') {
     snapshot = snapshot.snapshot;
+  }
+  if (snapshot.auction && typeof snapshot.auction === 'object') {
+    auctionId = auctionId || snapshot.auction.id || snapshot.auctionId;
+    snapshot = snapshot.auction;
   }
 
   try {
