@@ -80,12 +80,16 @@ export function useAuctionSocket(auctionId, teamId = null) {
         }
 
         // 2. Safely merge items ensuring all latest server statuses (SOLD, QUEUED, etc.) are always applied
-        let resolvedItems = nextAuction.items || prev.items;
+        let resolvedItems = Array.isArray(nextAuction.items)
+          ? [...nextAuction.items]
+          : Array.isArray(prev.items)
+          ? prev.items
+          : [];
         if (Array.isArray(prev.items) && Array.isArray(nextAuction.items)) {
-          const nextItemMap = new Map(nextAuction.items.map(i => [i.id, i]));
+          const nextItemMap = new Map(nextAuction.items.filter(Boolean).map(i => [i.id, i]));
           resolvedItems = [...nextAuction.items];
           for (const pIt of prev.items) {
-            if (!nextItemMap.has(pIt.id)) {
+            if (pIt && pIt.id && !nextItemMap.has(pIt.id)) {
               resolvedItems.push(pIt);
             }
           }

@@ -78,7 +78,7 @@ export default function ProjectorView() {
           background:
             overlay?.type === 'SOLD' && overlay.teamPrimaryColor
               ? `radial-gradient(circle at 50% 35%, ${overlay.teamPrimaryColor}88 0%, transparent 70%)`
-              : highestTeam
+              : highestTeam && highestTeam.primaryColor
               ? `radial-gradient(circle at 68% 38%, ${highestTeam.primaryColor}66 0%, transparent 65%)`
               : 'radial-gradient(circle at 50% 25%, rgba(245, 158, 11, 0.22) 0%, transparent 65%)'
         }}
@@ -426,8 +426,8 @@ export default function ProjectorView() {
                 <div
                   className="rounded-3xl bg-slate-900/95 border-2 p-5 sm:p-7 shadow-2xl flex flex-col justify-between"
                   style={{
-                    borderColor: highestTeam ? highestTeam.primaryColor : '#334155',
-                    background: highestTeam
+                    borderColor: highestTeam?.primaryColor || '#334155',
+                    background: highestTeam?.primaryColor
                       ? `linear-gradient(135deg, ${highestTeam.primaryColor}30 0%, #0F172A 100%)`
                       : undefined
                   }}

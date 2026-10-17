@@ -2475,8 +2475,8 @@ export default function CommitteeAdminDashboard() {
                                 <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                                   <span>🏆</span>
                                   <span className="truncate max-w-[85px]">
-                                    {(auction.teams || []).find(t => t.id === item.soldToTeamId)?.shortName ||
-                                     (auction.teams || []).find(t => t.id === item.soldToTeamId)?.name ||
+                                    {(auction?.teams || []).find(t => t.id === item.soldToTeamId)?.shortName ||
+                                     (auction?.teams || []).find(t => t.id === item.soldToTeamId)?.name ||
                                      'SOLD'}
                                   </span>
                                 </span>
@@ -5607,7 +5607,7 @@ export default function CommitteeAdminDashboard() {
                     className="w-full rounded-xl bg-slate-950 border border-slate-800 px-3.5 py-2.5 text-sm text-white font-bold"
                   >
                     <option value="" disabled>-- Select a Team --</option>
-                    {(auction.teams || []).map(t => (
+                    {(auction?.teams || []).map(t => (
                       <option key={t.id} value={t.id}>
                         {t.name} ({t.shortName || t.code}) — Available: {formatCurrency(t.remainingPurse, cur)}
                       </option>
@@ -5663,7 +5663,7 @@ export default function CommitteeAdminDashboard() {
 
                 {/* Purse Validation Card */}
                 {(() => {
-                  const selTeam = (auction.teams || []).find(t => t.id === manualAllotTeamId);
+                  const selTeam = (auction?.teams || []).find(t => t.id === manualAllotTeamId);
                   if (!selTeam) return null;
                   const amt = parseCurrencyInput(manualAllotAmountInput, cur) || 0;
                   const refundFromPrev =

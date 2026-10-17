@@ -1236,12 +1236,16 @@ export function cleanPlayerKey(name) {
   return normalizePlayerName(name);
 }
 
-export function isIplAuction(auction) {
-  if (!auction) return false;
-  const name = String(auction.name || '').toLowerCase();
-  const comm = String(auction.committeeName || '').toLowerCase();
+export function isIplAuction(auctionOrCurrency) {
+  if (!auctionOrCurrency) return false;
+  if (typeof auctionOrCurrency === 'string') {
+    const s = auctionOrCurrency.toUpperCase();
+    return s === 'INR' || s.includes('IPL') || s.includes('CRICKET');
+  }
+  const name = String(auctionOrCurrency.name || '').toLowerCase();
+  const comm = String(auctionOrCurrency.committeeName || '').toLowerCase();
   return (
-    auction.currency === 'INR' ||
+    auctionOrCurrency.currency === 'INR' ||
     name.includes('ipl') ||
     name.includes('cricket') ||
     comm.includes('ipl') ||

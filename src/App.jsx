@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 import LandingLoginPage from './pages/LandingLoginPage.jsx';
 import SuperAdminDashboard from './pages/SuperAdminDashboard.jsx';
 import CommitteeAdminDashboard from './pages/CommitteeAdminDashboard.jsx';
@@ -45,38 +46,40 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingLoginPage mode="TEAM" />} />
-          <Route path="/admin" element={<LandingLoginPage mode="ADMIN" />} />
-          <Route
-            path="/super-admin"
-            element={
-              <AdminRoute superAdminOnly>
-                <SuperAdminDashboard />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/admin/auction/:auctionId"
-            element={
-              <AdminRoute>
-                <CommitteeAdminDashboard />
-              </AdminRoute>
-            }
-          />
-          <Route
-            path="/team/:auctionId"
-            element={
-              <TeamRoute>
-                <TeamDashboard />
-              </TeamRoute>
-            }
-          />
-          <Route path="/projector/:auctionId" element={<ProjectorView />} />
-          <Route path="/players/:auctionId" element={<PlayersDirectoryPage />} />
-          <Route path="/auction/:auctionId/players" element={<PlayersDirectoryPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            <Route path="/" element={<LandingLoginPage mode="TEAM" />} />
+            <Route path="/admin" element={<LandingLoginPage mode="ADMIN" />} />
+            <Route
+              path="/super-admin"
+              element={
+                <AdminRoute superAdminOnly>
+                  <SuperAdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/auction/:auctionId"
+              element={
+                <AdminRoute>
+                  <CommitteeAdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/team/:auctionId"
+              element={
+                <TeamRoute>
+                  <TeamDashboard />
+                </TeamRoute>
+              }
+            />
+            <Route path="/projector/:auctionId" element={<ProjectorView />} />
+            <Route path="/players/:auctionId" element={<PlayersDirectoryPage />} />
+            <Route path="/auction/:auctionId/players" element={<PlayersDirectoryPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </BrowserRouter>
     </AuthProvider>
   );
