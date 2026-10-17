@@ -271,6 +271,9 @@ function broadcastAuctionState(auctionId, extraEvent = null) {
         broadcastToSupabase(auctionId, 'DAY_1_SUMMARY_TOGGLED', extraEvent);
       }
     }
+
+    // Always notify clients to sync full state when items change or sales happen
+    broadcastToSupabase(auctionId, 'auction:sync', { triggeredAt: Date.now() });
   } catch (err) {
     console.warn('[Supabase Broadcast Failed]:', err?.message || err);
   }
@@ -3022,10 +3025,145 @@ app.post('/api/auctions/:auctionId/items/:itemId/transfer-sale', requireAuctionA
 
     broadcastAuctionState(auctionId, { type: 'PURCHASE_TRANSFERRED', sound: 'TRANSITION' });
     res.json({ auction: getHydratedAuction(auctionId) });
+// Manual Allot / Sell player directly in Pool / Showcase
+app.post('/api/auctions/:auctionId/items/:itemId/manual-allot', requireAuctionAdmin, (req, res) => {
+  const { auctionId, itemId } = req.params;
+  const { targetTeamId, soldAmount, status = 'SOLD', allowPurseOverride = false } = req.body || {};
+
+  try {
+    runTransaction(() => {
+      const auction = db.prepare('SELECT * FROM auctions WHERE id = ?').get(auctionId);
+      if (!auction) throw new Error('Auction not found.');
+
+      const item = db.prepare('SELECT * FROM items WHERE id = ? AND auctionId = ?').get(itemId, auctionId);
+      if (!item) throw new Error('Item not found.');
+
+      const now = new Date().toISOString();
+      const prevStatus = item.status;
+      const prevTeamId = item.soldToTeamId;
+      const prevSoldAmount = item.soldAmount;
+
+      if (status === 'SOLD') {
+        if (!targetTeamId) {
+          throw new Error('Please select a team to allot this player to.');
+        }
+
+        const team = db.prepare('SELECT * FROM teams WHERE id = ? AND auctionId = ?').get(targetTeamId, auctionId);
+        if (!team) throw new Error('Selected team not found.');
+
+        const price = Math.round(Number(soldAmount !== undefined && soldAmount !== null && soldAmount !== '' ? soldAmount : item.basePrice) || 0);
+        if (price <= 0) {
+          throw new Error('Sold price must be greater than zero.');
+        }
+
+        // Check target team's purse
+        const teamPurseBefore = recalculateTeamPurse(team.id).remainingPurse;
+        const available = prevTeamId === team.id ? teamPurseBefore + (Number(prevSoldAmount) || 0) : teamPurseBefore;
+
+        if (price > available && !allowPurseOverride) {
+          throw new Error(
+            `Cannot allot: ${team.name} only has ${formatCurrency(available, auction.currency)} available. Check "Override Purse Limit" if authorized.`
+          );
+        }
+
+        // If active item, clear activeItemId on auction
+        if (auction.activeItemId === item.id) {
+          db.prepare('UPDATE auctions SET activeItemId = NULL, updatedAt = ? WHERE id = ?').run(now, auctionId);
+        }
+
+        // Update item
+        db.prepare(`
+          UPDATE items
+          SET status = 'SOLD',
+              soldToTeamId = ?,
+              soldAmount = ?,
+              currentBid = ?,
+              highestBidderTeamId = ?,
+              soldAt = COALESCE(soldAt, ?),
+              updatedAt = ?
+          WHERE id = ? AND auctionId = ?
+        `).run(team.id, price, price, team.id, now, now, item.id, auctionId);
+
+        // Recalculate target team purse
+        recalculateTeamPurse(team.id);
+
+        // If previously sold to another team, recalculate their purse too
+        if (prevTeamId && prevTeamId !== team.id) {
+          recalculateTeamPurse(prevTeamId);
+        }
+
+        // Record in sales_history
+        db.prepare(`
+          INSERT INTO sales_history (
+            id, auctionId, itemId, itemName, poolName, eventType,
+            teamId, teamName, amount, reauctionNumber, adminName, adminRole, createdAt
+          ) VALUES (?, ?, ?, ?, ?, 'MANUAL_ALLOTMENT', ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          uid('sh'),
+          auctionId,
+          item.id,
+          item.name,
+          item.poolName,
+          team.id,
+          team.name,
+          price,
+          item.reauctionCount || 0,
+          req.user.name,
+          req.user.auctionRole,
+          now
+        );
+
+        recordAudit({
+          auctionId,
+          user: req.user,
+          action: 'Player manually allotted',
+          entityType: 'ITEM',
+          entityId: item.id,
+          entityName: item.name,
+          previousValue: { status: prevStatus, teamId: prevTeamId, amount: prevSoldAmount },
+          newValue: { status: 'SOLD', teamId: team.id, teamName: team.name, amount: price }
+        });
+      } else {
+        // Resetting back to QUEUED or UNSOLD
+        const targetStatus = status === 'UNSOLD' ? 'UNSOLD' : 'QUEUED';
+
+        db.prepare(`
+          UPDATE items
+          SET status = ?,
+              soldToTeamId = NULL,
+              soldAmount = NULL,
+              highestBidderTeamId = NULL,
+              currentBid = 0,
+              soldAt = NULL,
+              soldViaRtm = 0,
+              updatedAt = ?
+          WHERE id = ? AND auctionId = ?
+        `).run(targetStatus, now, item.id, auctionId);
+
+        if (prevTeamId) {
+          recalculateTeamPurse(prevTeamId);
+        }
+
+        recordAudit({
+          auctionId,
+          user: req.user,
+          action: `Player status reset to ${targetStatus}`,
+          entityType: 'ITEM',
+          entityId: item.id,
+          entityName: item.name,
+          previousValue: { status: prevStatus, teamId: prevTeamId, amount: prevSoldAmount },
+          newValue: { status: targetStatus }
+        });
+      }
+    });
+
+    broadcastAuctionState(auctionId, { type: 'ITEM_MANUAL_ALLOTTED', itemId, sound: 'SOLD' });
+    res.json({ auction: getHydratedAuction(auctionId) });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
+
 
 // ============================================================================
 // 8. QUEUE, ITEMS / PLAYERS & IMAGE SYSTEM (Sections 11, 12, 13, 14)

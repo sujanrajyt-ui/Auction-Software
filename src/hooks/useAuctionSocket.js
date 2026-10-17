@@ -79,23 +79,23 @@ export function useAuctionSocket(auctionId, teamId = null) {
           resolvedOverlay = prev.projectorOverlay;
         }
 
-        // 2. Never let a stale background poll with fewer items wipe out newly added players
-        let resolvedItems = nextAuction.items;
-        let resolvedQueue = nextAuction.queue;
-        if (
-          Array.isArray(prev.items) &&
-          Array.isArray(nextAuction.items) &&
-          prev.items.length > nextAuction.items.length
-        ) {
-          resolvedItems = prev.items;
-          resolvedQueue = prev.queue;
+        // 2. Safely merge items ensuring all latest server statuses (SOLD, QUEUED, etc.) are always applied
+        let resolvedItems = nextAuction.items || prev.items;
+        if (Array.isArray(prev.items) && Array.isArray(nextAuction.items)) {
+          const nextItemMap = new Map(nextAuction.items.map(i => [i.id, i]));
+          resolvedItems = [...nextAuction.items];
+          for (const pIt of prev.items) {
+            if (!nextItemMap.has(pIt.id)) {
+              resolvedItems.push(pIt);
+            }
+          }
         }
 
         return {
           ...nextAuction,
           projectorOverlay: resolvedOverlay,
           items: resolvedItems,
-          queue: resolvedQueue
+          queue: nextAuction.queue || prev.queue
         };
       });
       setConnected(true);
@@ -196,6 +196,7 @@ export function useAuctionSocket(auctionId, teamId = null) {
                 setTeamWinNotification({ ...nextOv, receivedAt: Date.now() });
                 playAuctionSound('TEAM_WON');
               }
+              fetchLatestState(true);
             } else if (nextOv.type === 'UNSOLD') {
               playAuctionSound('UNSOLD');
               setLastEvent({ type: 'ITEM_UNSOLD', unsold: nextOv, receivedAt: Date.now() });
@@ -232,6 +233,18 @@ export function useAuctionSocket(auctionId, teamId = null) {
         if (payload?.type === 'ITEM_SOLD' && teamId && payload?.sale?.teamId === teamId) {
           setTeamWinNotification({ ...payload.sale, receivedAt: Date.now() });
           playAuctionSound('TEAM_WON');
+        }
+        // Immediately fetch latest items and squads on any sale or allotment
+        if (
+          payload?.type === 'ITEM_SOLD' ||
+          payload?.type === 'ITEM_MANUAL_ALLOTTED' ||
+          payload?.type === 'SALE_REVERSED' ||
+          payload?.type === 'PURCHASE_TRANSFERRED' ||
+          payload?.type === 'ITEM_UNSOLD' ||
+          payload?.type === 'ITEM_REAUCTION' ||
+          payload?.type === 'AUCTION_RESET'
+        ) {
+          fetchLatestState(true);
         }
       };
 
@@ -322,12 +335,10 @@ export function useAuctionSocket(auctionId, teamId = null) {
       });
     }
 
-    // 3. Fallback polling ONLY when WebSocket is NOT connected (prevents overwriting live state)
+    // 3. Periodic state sync (ensures new sold players & team purses stay 100% updated on all devices)
     const pollInterval = setInterval(() => {
-      if (!wsConnectedRef.current) {
-        fetchLatestState(true);
-      }
-    }, 10000);
+      fetchLatestState(true);
+    }, 5000);
 
     return () => {
       clearInterval(pollInterval);
