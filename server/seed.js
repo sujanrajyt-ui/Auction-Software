@@ -195,10 +195,54 @@ export function createAuctionInstance({
   });
 }
 
-function sanitizeSqliteValue(v, colName) {
-  if (v === undefined || v === null) {
-    if (colName === 'createdAt' || colName === 'updatedAt') return new Date().toISOString();
-    if (colName === 'disabled' || colName === 'sortOrder' || colName === 'isLegendPool') return 0;
+function sanitizeSqliteValue(v, colName, row = {}) {
+  if (v === undefined || v === null || (typeof v === 'string' && v.trim() === '')) {
+    if (colName === 'createdAt' || colName === 'updatedAt' || colName === 'assignedAt' || colName === 'timestamp') {
+      return row.createdAt || row.updatedAt || row.assignedAt || row.timestamp || new Date().toISOString();
+    }
+    if (
+      colName === 'disabled' ||
+      colName === 'sortOrder' ||
+      colName === 'isLegendPool' ||
+      colName === 'soldViaRtm' ||
+      colName === 'reauctionCount' ||
+      colName === 'active' ||
+      colName === 'retentionsPublished' ||
+      colName === 'isOverride' ||
+      colName === 'undone' ||
+      colName === 'reopenedCount'
+    ) {
+      return 0;
+    }
+    if (colName === 'pin') {
+      if (row.id) {
+        try {
+          const ex = db.prepare('SELECT pin FROM teams WHERE id = ?').get(row.id);
+          if (ex && ex.pin) return String(ex.pin);
+        } catch {}
+      }
+      return String(row.pin || '1234');
+    }
+    if (colName === 'shortName') {
+      return String(row.code || (row.name ? row.name.slice(0, 4) : 'TEAM')).toUpperCase();
+    }
+    if (colName === 'code') {
+      return String(row.shortName || (row.name ? row.name.slice(0, 3) : 'TM')).toUpperCase();
+    }
+    if (colName === 'logoUrl') {
+      return row.logoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'Team')}&background=034694&color=fff&bold=true`;
+    }
+    if (colName === 'imageUrl') {
+      return row.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'Item')}&background=111827&color=F59E0B&bold=true`;
+    }
+    if (colName === 'startingPurse') return 1000000000;
+    if (colName === 'remainingPurse') return Number(row.startingPurse) || 1000000000;
+    if (colName === 'basePrice' || colName === 'originalBasePrice') return 10000000;
+    if (colName === 'poolName') return row.category || row.pool || 'General';
+    if (colName === 'committeeName') return 'Auction Committee';
+    if (colName === 'incrementRulesJson') return '[]';
+    if (colName === 'primaryColor') return '#034694';
+    if (colName === 'secondaryColor') return '#DBA111';
     return null;
   }
   if (typeof v === 'boolean') return v ? 1 : 0;
@@ -257,17 +301,32 @@ export function ensureSeedData({ forceReset = false } = {}) {
               if (rows.length === 0) continue;
               const tableCols = db.prepare(`PRAGMA table_info(${table})`).all();
               const tableColsSet = new Set(tableCols.map(c => c.name));
-              const cols = Object.keys(rows[0]).filter(c => tableColsSet.has(c));
-              if (tableColsSet.has('createdAt') && !cols.includes('createdAt')) {
-                cols.push('createdAt');
+              
+              const presentColsSet = new Set();
+              for (const r of rows) {
+                if (r && typeof r === 'object') {
+                  for (const k of Object.keys(r)) {
+                    if (tableColsSet.has(k)) presentColsSet.add(k);
+                  }
+                }
               }
+
+              for (const tc of tableCols) {
+                if (tc.notnull && tc.dflt_value === null && !tc.pk) {
+                  presentColsSet.add(tc.name);
+                }
+              }
+              if (tableColsSet.has('createdAt')) presentColsSet.add('createdAt');
+              if (tableColsSet.has('updatedAt')) presentColsSet.add('updatedAt');
+
+              const cols = Array.from(presentColsSet);
               if (cols.length === 0) continue;
               const placeholders = cols.map(() => '?').join(', ');
               const stmt = db.prepare(
                 `INSERT OR REPLACE INTO ${table} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
               );
               for (const row of rows) {
-                stmt.run(...cols.map(c => sanitizeSqliteValue(row[c], c)));
+                stmt.run(...cols.map(c => sanitizeSqliteValue(row[c], c, row)));
               }
             }
           } finally {
