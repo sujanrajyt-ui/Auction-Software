@@ -141,6 +141,7 @@ export default function CommitteeAdminDashboard() {
   const [assignModalPool, setAssignModalPool] = useState(null);
   const [assignSelectedItemIds, setAssignSelectedItemIds] = useState([]);
   const [assignSyncPrice, setAssignSyncPrice] = useState(false);
+  const [poolViewFilter, setPoolViewFilter] = useState({});
 
   const [incMinInput, setIncMinInput] = useState('0');
   const [incMaxInput, setIncMaxInput] = useState('');
@@ -1184,6 +1185,47 @@ export default function CommitteeAdminDashboard() {
     }
   };
 
+  const handleClearPool = async pool => {
+    const poolItems = (auction.items || []).filter(
+      it =>
+        it.poolId === pool.id ||
+        String(it.poolName).toLowerCase() === String(pool.name).toLowerCase()
+    );
+    const queuedCount = poolItems.filter(
+      it => it.status === 'QUEUED' || it.status === 'UNSOLD'
+    ).length;
+
+    if (queuedCount === 0) {
+      showNotice(`No queued players in "${pool.name}" to clear.`);
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Clear all ${queuedCount} available/queued players from "${pool.name}"? Any SOLD players will remain safe in team squads.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setBusyAction(true);
+      const res = await apiFetch(`/api/auctions/${auctionId}/pools/${pool.id}/clear`, {
+        method: 'POST'
+      });
+      showNotice(
+        res.message || `Cleared ${res.clearedCount || queuedCount} players from ${pool.name}!`
+      );
+      if (res?.auction && setAuction) {
+        setAuction(res.auction);
+      }
+    } catch (err) {
+      showNotice(err.message, 'error');
+    } finally {
+      setBusyAction(false);
+    }
+  };
+
   const handleDeletePool = async poolId => {
     try {
       await apiFetch(`/api/auctions/${auctionId}/pools/${poolId}`, { method: 'DELETE' });
@@ -2153,6 +2195,16 @@ export default function CommitteeAdminDashboard() {
                   it => it.status === 'UNSOLD' || it.status === 'PERMANENTLY_UNSOLD'
                 );
 
+                const currentPoolFilter = poolViewFilter[pool.id] || 'QUEUED';
+                const displayedPoolItems =
+                  currentPoolFilter === 'ALL'
+                    ? poolItems
+                    : currentPoolFilter === 'SOLD'
+                    ? soldInPool
+                    : currentPoolFilter === 'UNSOLD'
+                    ? unsoldInPool
+                    : queuedInPool; // default is QUEUED only!
+
                 return (
                   <div
                     key={pool.id}
@@ -2177,7 +2229,7 @@ export default function CommitteeAdminDashboard() {
                               {formatCurrency(pool.defaultBasePrice, cur)}
                             </strong>{' '}
                             • Total: <strong>{poolItems.length}</strong> ({queuedInPool.length}{' '}
-                            Queued, {soldInPool.length} Sold, {unsoldInPool.length} Unsold)
+                            Available, {soldInPool.length} Sold, {unsoldInPool.length} Unsold)
                           </div>
                         </div>
 
@@ -2215,13 +2267,64 @@ export default function CommitteeAdminDashboard() {
                           </button>
                           <button
                             type="button"
+                            disabled={busyAction || (queuedInPool.length === 0 && unsoldInPool.length === 0)}
+                            onClick={() => handleClearPool(pool)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 disabled:opacity-35 text-rose-300 border border-rose-500/40 text-[11px] font-extrabold cursor-pointer"
+                            title="Clear all available queued players from this pool"
+                          >
+                            <Trash2 className="w-3 h-3 text-rose-400" />
+                            Clear Pool
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleDeletePool(pool.id)}
                             className="p-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 cursor-pointer"
                             title="Delete Pool Set"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
+                      </div>
+
+                      {/* Pool Filter Pills: Available vs Sold vs Unsold */}
+                      <div className="flex items-center gap-1.5 mt-3 text-xs font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setPoolViewFilter(prev => ({ ...prev, [pool.id]: 'QUEUED' }))}
+                          className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                            currentPoolFilter === 'QUEUED'
+                              ? 'bg-amber-500 text-slate-950 font-extrabold shadow'
+                              : 'bg-slate-950/80 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          Available ({queuedInPool.length})
+                        </button>
+                        {soldInPool.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setPoolViewFilter(prev => ({ ...prev, [pool.id]: 'SOLD' }))}
+                            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                              currentPoolFilter === 'SOLD'
+                                ? 'bg-emerald-500 text-slate-950 font-extrabold shadow'
+                                : 'bg-slate-950/80 text-slate-400 hover:text-white border border-slate-800'
+                            }`}
+                          >
+                            Sold ({soldInPool.length})
+                          </button>
+                        )}
+                        {unsoldInPool.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setPoolViewFilter(prev => ({ ...prev, [pool.id]: 'UNSOLD' }))}
+                            className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                              currentPoolFilter === 'UNSOLD'
+                                ? 'bg-rose-500 text-slate-950 font-extrabold shadow'
+                                : 'bg-slate-950/80 text-slate-400 hover:text-white border border-slate-800'
+                            }`}
+                          >
+                            Unsold ({unsoldInPool.length})
+                          </button>
+                        )}
                       </div>
 
                       {/* Quick Add Player into this Pool Set */}
@@ -2256,7 +2359,7 @@ export default function CommitteeAdminDashboard() {
 
                       {/* Players in this Pool Set */}
                       <div className="mt-3 space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                        {poolItems.map(item => (
+                        {displayedPoolItems.map(item => (
                           <div
                             key={item.id}
                             className="px-3 py-2 rounded-xl bg-slate-950/90 border border-slate-800 flex items-center justify-between gap-2 text-xs"
@@ -2272,7 +2375,9 @@ export default function CommitteeAdminDashboard() {
                                   <OverseasPlane playerName={item.name} auction={auction} />
                                 </div>
                                 <div className="text-[10px] font-mono-num text-amber-400">
-                                  {formatCurrency(item.basePrice, cur)}
+                                  {item.status === 'SOLD' && item.soldAmount
+                                    ? `Sold: ${formatCurrency(item.soldAmount, cur)}`
+                                    : formatCurrency(item.basePrice, cur)}
                                 </div>
                               </div>
                             </div>
@@ -2289,9 +2394,15 @@ export default function CommitteeAdminDashboard() {
                             </span>
                           </div>
                         ))}
-                        {poolItems.length === 0 && (
+                        {displayedPoolItems.length === 0 && (
                           <div className="py-5 text-center text-xs text-slate-500">
-                            No players in this Pool Set yet.
+                            {currentPoolFilter === 'QUEUED'
+                              ? soldInPool.length > 0
+                                ? `All players in this pool have been auctioned (${soldInPool.length} Sold).`
+                                : 'No available queued players in this pool.'
+                              : currentPoolFilter === 'SOLD'
+                              ? 'No players sold yet from this pool.'
+                              : 'No unsold players in this pool.'}
                           </div>
                         )}
                       </div>
@@ -3856,26 +3967,64 @@ export default function CommitteeAdminDashboard() {
               </form>
 
               <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                {(auction.pools || []).map(pool => (
-                  <div
-                    key={pool.id}
-                    className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="text-xs font-bold text-white">{pool.name}</div>
-                      <div className="text-[11px] font-mono-num text-amber-400">
-                        Default Base: {formatCurrency(pool.defaultBasePrice, cur)}
+                {(auction.pools || []).map(pool => {
+                  const poolItems = (auction.items || []).filter(
+                    it =>
+                      it.poolId === pool.id ||
+                      String(it.poolName).toLowerCase() === String(pool.name).toLowerCase()
+                  );
+                  const queuedInPool = poolItems.filter(it => it.status === 'QUEUED');
+                  const soldInPool = poolItems.filter(it => it.status === 'SOLD');
+                  const unsoldInPool = poolItems.filter(
+                    it => it.status === 'UNSOLD' || it.status === 'PERMANENTLY_UNSOLD'
+                  );
+
+                  return (
+                    <div
+                      key={pool.id}
+                      className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-white flex items-center gap-2">
+                          <span>{pool.name}</span>
+                          {pool.isLegendPool && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[9px] font-extrabold uppercase">
+                              Marquee
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] font-mono-num text-amber-400 mt-0.5">
+                          Default Base: {formatCurrency(pool.defaultBasePrice, cur)}
+                          <span className="text-slate-400 ml-2 font-sans">
+                            ({queuedInPool.length} Available
+                            {soldInPool.length > 0 ? `, ${soldInPool.length} Sold` : ''}
+                            {unsoldInPool.length > 0 ? `, ${unsoldInPool.length} Unsold` : ''})
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={busyAction || (queuedInPool.length === 0 && unsoldInPool.length === 0)}
+                          onClick={() => handleClearPool(pool)}
+                          className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 disabled:opacity-35 text-rose-300 border border-rose-500/30 text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"
+                          title="Clear all available/unsold players from this pool"
+                        >
+                          <Trash2 className="w-3 h-3 text-rose-400" />
+                          Clear Pool
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePool(pool.id)}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/30 text-slate-400 hover:text-rose-400 cursor-pointer"
+                          title="Delete Pool Set"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePool(pool.id)}
-                      className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

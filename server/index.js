@@ -3713,6 +3713,66 @@ app.delete('/api/auctions/:auctionId/pools/:poolId', requireAuctionAdmin, (req, 
   res.json({ auction: getHydratedAuction(auctionId) });
 });
 
+// Clear all QUEUED / UNSOLD players from a Pool Set (preserves all SOLD items & finances)
+app.post('/api/auctions/:auctionId/pools/:poolId/clear', requireAuctionAdmin, (req, res) => {
+  const { auctionId, poolId } = req.params;
+  const pool = db
+    .prepare('SELECT * FROM pools WHERE id = ? AND auctionId = ?')
+    .get(poolId, auctionId);
+  if (!pool) return res.status(404).json({ error: 'Pool Set not found.' });
+
+  let clearedCount = 0;
+  runTransaction(() => {
+    // Only delete items that are NOT sold (preserve all team squads & finances)
+    const itemsToDelete = db
+      .prepare(
+        "SELECT id, name FROM items WHERE auctionId = ? AND (poolId = ? OR LOWER(poolName) = LOWER(?)) AND status != 'SOLD'"
+      )
+      .all(auctionId, poolId, pool.name);
+
+    clearedCount = itemsToDelete.length;
+
+    const deleteStmt = db.prepare('DELETE FROM items WHERE id = ?');
+    for (const item of itemsToDelete) {
+      deleteStmt.run(item.id);
+    }
+
+    try {
+      db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
+    } catch {}
+
+    recordAudit({
+      auctionId,
+      user: req.user,
+      action: 'Pool Set cleared',
+      entityType: 'POOL',
+      entityId: poolId,
+      entityName: pool.name,
+      previousValue: { queuedCount: clearedCount },
+      newValue: { clearedCount, status: 'CLEARED' }
+    });
+  });
+
+  try {
+    const dump = {};
+    for (const table of BACKUP_TABLES_IN_ORDER) {
+      dump[table] = db.prepare(`SELECT * FROM ${table}`).all();
+    }
+    const outputPath = path.resolve(process.cwd(), 'data', 'verdict_seed.json');
+    fs.writeFileSync(outputPath, JSON.stringify(dump, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn('[Pool Clear] Failed to update verdict_seed.json:', err.message);
+  }
+
+  broadcastAuctionState(auctionId);
+  res.json({
+    success: true,
+    clearedCount,
+    message: `Cleared ${clearedCount} queued players from ${pool.name}.`,
+    auction: getHydratedAuction(auctionId)
+  });
+});
+
 // ============================================================================
 // 10. TEAM MANAGEMENT & PURSE ADJUSTMENTS (Sections 7, 25)
 // ============================================================================
