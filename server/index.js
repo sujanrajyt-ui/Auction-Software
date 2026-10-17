@@ -984,6 +984,148 @@ app.delete('/api/platform/settings/logos/:logoId', requireSuperAdmin, (req, res)
 });
 
 // ============================================================================
+// 3.5 DATA BACKUP & RESTORE / CHECKPOINT ENDPOINTS
+// ============================================================================
+
+const BACKUP_TABLES_IN_ORDER = [
+  'users',
+  'platform_settings',
+  'auctions',
+  'auction_admins',
+  'teams',
+  'pools',
+  'items',
+  'bids',
+  'retentions',
+  'purse_adjustments',
+  'sales_history',
+  'audit_logs'
+];
+
+app.post('/api/platform/backup/save', requireAdmin, async (req, res) => {
+  try {
+    try {
+      db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
+    } catch (e) {
+      console.warn('[WAL Checkpoint Warning]:', e.message);
+    }
+
+    const dump = {};
+    for (const table of BACKUP_TABLES_IN_ORDER) {
+      dump[table] = db.prepare(`SELECT * FROM ${table}`).all();
+    }
+
+    try {
+      const seedPath = path.resolve(process.cwd(), 'data', 'verdict_seed.json');
+      fs.writeFileSync(seedPath, JSON.stringify(dump, null, 2), 'utf-8');
+    } catch (e) {
+      console.warn('[Seed Write Warning]:', e.message);
+    }
+
+    if (isNeonEnabled()) {
+      try {
+        await syncToNeon();
+      } catch (e) {
+        console.warn('[Neon Sync Warning]:', e.message);
+      }
+    }
+
+    const totalAuctions = dump.auctions?.length || 0;
+    const totalItems = dump.items?.length || 0;
+    const totalTeams = dump.teams?.length || 0;
+    const totalBids = dump.bids?.length || 0;
+
+    recordAudit({
+      user: req.user,
+      action: 'Data snapshot saved & backed up',
+      entityType: 'PLATFORM',
+      entityId: 'backup',
+      entityName: 'Full Database Backup',
+      previousValue: null,
+      newValue: { totalAuctions, totalItems, totalTeams, totalBids }
+    });
+
+    res.json({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      stats: { totalAuctions, totalItems, totalTeams, totalBids },
+      snapshot: dump
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save data: ' + err.message });
+  }
+});
+
+app.post('/api/platform/backup/restore', requireSuperAdmin, async (req, res) => {
+  const { snapshot } = req.body || {};
+  if (!snapshot || typeof snapshot !== 'object') {
+    return res.status(400).json({ error: 'Invalid snapshot data provided.' });
+  }
+
+  try {
+    runTransaction(() => {
+      db.exec('PRAGMA foreign_keys = OFF;');
+      try {
+        for (const table of [...BACKUP_TABLES_IN_ORDER].reverse()) {
+          db.prepare(`DELETE FROM ${table}`).run();
+        }
+        for (const table of BACKUP_TABLES_IN_ORDER) {
+          const rows = Array.isArray(snapshot[table]) ? snapshot[table] : [];
+          if (rows.length === 0) continue;
+          const cols = Object.keys(rows[0]);
+          const placeholders = cols.map(() => '?').join(', ');
+          const stmt = db.prepare(
+            `INSERT INTO ${table} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
+          );
+          for (const row of rows) {
+            stmt.run(...cols.map(c => (row[c] === undefined ? null : row[c])));
+          }
+        }
+      } finally {
+        db.exec('PRAGMA foreign_keys = ON;');
+      }
+    });
+
+    try {
+      db.prepare('PRAGMA wal_checkpoint(TRUNCATE)').get();
+    } catch {}
+
+    try {
+      const seedPath = path.resolve(process.cwd(), 'data', 'verdict_seed.json');
+      fs.writeFileSync(seedPath, JSON.stringify(snapshot, null, 2), 'utf-8');
+    } catch {}
+
+    if (isNeonEnabled()) {
+      try {
+        await syncToNeon();
+      } catch (e) {
+        console.warn('[Neon Sync Warning]:', e.message);
+      }
+    }
+
+    recordAudit({
+      user: req.user,
+      action: 'Data snapshot restored',
+      entityType: 'PLATFORM',
+      entityId: 'restore',
+      entityName: 'Database Restored from Backup',
+      previousValue: null,
+      newValue: { timestamp: new Date().toISOString() }
+    });
+
+    io.emit('platform:updated');
+    const allAuctions = db.prepare('SELECT id FROM auctions').all();
+    for (const a of allAuctions) {
+      broadcastAuctionState(a.id);
+    }
+
+    res.json({ ok: true, message: 'Data restored successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to restore data: ' + err.message });
+  }
+});
+
+// ============================================================================
 // 4. AUCTION CREATION, DELETION, RESET & CONFIGURATION (Sections 8, 9, 10)
 // ============================================================================
 

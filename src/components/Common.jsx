@@ -10,7 +10,10 @@ import {
   Shield,
   Gavel,
   Sparkles,
-  Users
+  Users,
+  Save,
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import {
   generateCrestSvgDataUri,
@@ -278,6 +281,74 @@ export function SoundControl() {
   );
 }
 
+export function SaveDataButton() {
+  const { apiFetch } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const res = await apiFetch('/api/platform/backup/save', { method: 'POST' });
+      if (res?.snapshot) {
+        const blob = new Blob([JSON.stringify(res.snapshot, null, 2)], {
+          type: 'application/json'
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const nowStr = new Date()
+          .toISOString()
+          .replace(/[:.]/g, '-')
+          .slice(0, 16);
+        a.href = url;
+        a.download = `vista_verdict_backup_${nowStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 4000);
+    } catch (err) {
+      alert('Save data failed: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleSave}
+      disabled={saving}
+      title="Checkpoint server database to disk and download an instant backup JSON file to your computer"
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer border ${
+        saved
+          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+          : 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-emerald-900/30'
+      }`}
+    >
+      {saving ? (
+        <>
+          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+          <span>Saving...</span>
+        </>
+      ) : saved ? (
+        <>
+          <Check className="w-3.5 h-3.5 text-emerald-300" />
+          <span>Saved & Backed Up!</span>
+        </>
+      ) : (
+        <>
+          <Save className="w-3.5 h-3.5" />
+          <span>Save Data</span>
+        </>
+      )}
+    </button>
+  );
+}
+
 export function VistaHeader({
   subtitle = 'Universal Multi-Committee Live Auction Platform',
   auction = null,
@@ -345,6 +416,8 @@ export function VistaHeader({
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {rightActions}
+
+          {user?.kind === 'ADMIN' && <SaveDataButton />}
 
           {auction && (
             <>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import {
@@ -17,7 +17,11 @@ import {
   X,
   UserPlus,
   Layers,
-  Camera
+  Camera,
+  Save,
+  Download,
+  Upload,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { VistaHeader, StatusBadge, TeamLogo } from '../components/Common.jsx';
@@ -72,9 +76,93 @@ export default function SuperAdminDashboard() {
   const [restartModalAuction, setRestartModalAuction] = useState(null);
   const [restartConfirmInput, setRestartConfirmInput] = useState('');
 
+  // Backup & Restore State
+  const [savingBackup, setSavingBackup] = useState(false);
+  const [restoringBackup, setRestoringBackup] = useState(false);
+  const [restoreJson, setRestoreJson] = useState(null);
+  const [restoreStats, setRestoreStats] = useState(null);
+  const restoreFileRef = useRef(null);
+
   const notify = (msg, type = 'success') => {
     setFeedback({ msg, type });
     setTimeout(() => setFeedback(null), 4000);
+  };
+
+  const handleManualSave = async () => {
+    setSavingBackup(true);
+    try {
+      const res = await apiFetch('/api/platform/backup/save', { method: 'POST' });
+      if (res?.snapshot) {
+        const blob = new Blob([JSON.stringify(res.snapshot, null, 2)], {
+          type: 'application/json'
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const nowStr = new Date()
+          .toISOString()
+          .replace(/[:.]/g, '-')
+          .slice(0, 16);
+        a.href = url;
+        a.download = `vista_verdict_backup_${nowStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+      notify(
+        `Full database checkpointed & backup downloaded (${res?.stats?.totalItems || 0} items across ${res?.stats?.totalAuctions || 0} committees)!`
+      );
+      fetchOverview();
+    } catch (err) {
+      notify('Failed to save data: ' + err.message, 'error');
+    } finally {
+      setSavingBackup(false);
+    }
+  };
+
+  const handleSelectRestoreFile = e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        if (!parsed || typeof parsed !== 'object' || !parsed.auctions || !parsed.items) {
+          notify('Invalid backup file: missing required auctions or items tables.', 'error');
+          return;
+        }
+        setRestoreJson(parsed);
+        setRestoreStats({
+          auctions: parsed.auctions?.length || 0,
+          items: parsed.items?.length || 0,
+          teams: parsed.teams?.length || 0,
+          bids: parsed.bids?.length || 0
+        });
+      } catch (err) {
+        notify('Failed to parse JSON backup file: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restoreJson) return;
+    setRestoringBackup(true);
+    try {
+      await apiFetch('/api/platform/backup/restore', {
+        method: 'POST',
+        body: JSON.stringify({ snapshot: restoreJson })
+      });
+      notify('Database successfully restored from backup file!');
+      setRestoreJson(null);
+      setRestoreStats(null);
+      if (restoreFileRef.current) restoreFileRef.current.value = '';
+      fetchOverview();
+    } catch (err) {
+      notify('Restore failed: ' + err.message, 'error');
+    } finally {
+      setRestoringBackup(false);
+    }
   };
 
   const fetchOverview = useCallback(async () => {
@@ -342,7 +430,8 @@ export default function SuperAdminDashboard() {
             { id: 'ADMINS', label: `Committee Admins (${admins.length})`, icon: Users },
             { id: 'LOGOS', label: `Built-In Logo Library (${settings.logoLibrary?.length || 0})`, icon: ImageIcon },
             { id: 'CURRENCIES', label: 'Predefined Currencies', icon: Coins },
-            { id: 'AUDIT', label: 'Platform Audit Log', icon: History }
+            { id: 'AUDIT', label: 'Platform Audit Log', icon: History },
+            { id: 'BACKUP', label: 'Save & Restore Data', icon: Save }
           ].map(t => {
             const Icon = t.icon;
             return (
@@ -943,6 +1032,136 @@ export default function SuperAdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 6: DATA BACKUP & RESTORE */}
+        {tab === 'BACKUP' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* CARD 1: SAVE & DOWNLOAD BACKUP */}
+              <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 sm:p-8 flex flex-col justify-between space-y-6 shadow-xl">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <Save className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-white">
+                    Save Data & Download Full Backup
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Instantly flush SQLite WAL journals to server disk and download a complete, timestamped JSON snapshot of all committees, players (IPL & Football), teams, retentions, bids, and purse balances directly to your computer.
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 pt-2">
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+                      <div className="text-[10px] font-bold uppercase text-slate-400">Committees</div>
+                      <div className="text-base font-extrabold text-white font-mono-num">{auctions.length}</div>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+                      <div className="text-[10px] font-bold uppercase text-slate-400">Total Players</div>
+                      <div className="text-base font-extrabold text-amber-400 font-mono-num">
+                        {auctions.reduce((sum, a) => sum + (a.items?.length || 0), 0)}
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-center">
+                      <div className="text-[10px] font-bold uppercase text-slate-400">Total Teams</div>
+                      <div className="text-base font-extrabold text-indigo-400 font-mono-num">
+                        {auctions.reduce((sum, a) => sum + (a.teams?.length || 0), 0)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleManualSave}
+                  disabled={savingBackup}
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold text-sm uppercase tracking-wider shadow-lg shadow-emerald-950/50 cursor-pointer transition-all"
+                >
+                  {savingBackup ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Saving & Exporting Database...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      Save & Download Backup File (.json)
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* CARD 2: RESTORE DATA FROM BACKUP */}
+              <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 sm:p-8 flex flex-col justify-between space-y-6 shadow-xl">
+                <div className="space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-white">
+                    Restore Data from Backup File
+                  </h3>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Upload any previously saved <code className="px-1.5 py-0.5 rounded bg-slate-950 text-indigo-300 font-mono-num font-bold">.json</code> backup file to restore all auctions, committees, teams, players, and bids into the database.
+                  </p>
+
+                  <div className="pt-2">
+                    <input
+                      ref={restoreFileRef}
+                      type="file"
+                      accept=".json"
+                      onChange={handleSelectRestoreFile}
+                      className="block w-full text-xs text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-extrabold file:bg-slate-800 file:text-white hover:file:bg-slate-700 cursor-pointer"
+                    />
+                  </div>
+
+                  {restoreStats && (
+                    <div className="p-4 rounded-2xl bg-slate-950 border border-indigo-500/30 space-y-2">
+                      <div className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        Backup File Verified & Ready to Restore:
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div className="p-2 rounded-xl bg-slate-900 text-slate-300">
+                          <span className="block text-[10px] text-slate-400">Auctions</span>
+                          <span className="font-bold font-mono-num">{restoreStats.auctions}</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-slate-900 text-slate-300">
+                          <span className="block text-[10px] text-slate-400">Players</span>
+                          <span className="font-bold font-mono-num">{restoreStats.items}</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-slate-900 text-slate-300">
+                          <span className="block text-[10px] text-slate-400">Teams</span>
+                          <span className="font-bold font-mono-num">{restoreStats.teams}</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-slate-900 text-slate-300">
+                          <span className="block text-[10px] text-slate-400">Bids</span>
+                          <span className="font-bold font-mono-num">{restoreStats.bids}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleConfirmRestore}
+                  disabled={!restoreJson || restoringBackup}
+                  className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold text-sm uppercase tracking-wider shadow-lg shadow-indigo-950/50 cursor-pointer transition-all"
+                >
+                  {restoringBackup ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Restoring Database...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="w-4 h-4" />
+                      Restore Database from File
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
