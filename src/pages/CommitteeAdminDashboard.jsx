@@ -152,6 +152,8 @@ export default function CommitteeAdminDashboard() {
   const [manualAllotAmountInput, setManualAllotAmountInput] = useState('');
   const [manualAllotStatus, setManualAllotStatus] = useState('SOLD');
   const [manualAllotOverride, setManualAllotOverride] = useState(false);
+  const [showQuickAllotPicker, setShowQuickAllotPicker] = useState(false);
+  const [quickAllotSearch, setQuickAllotSearch] = useState('');
 
   const [incMinInput, setIncMinInput] = useState('0');
   const [incMaxInput, setIncMaxInput] = useState('');
@@ -1453,6 +1455,20 @@ export default function CommitteeAdminDashboard() {
                   : 'END OF DAY 1'}
               </button>
             )}
+
+            {/* Quick Manual Sell / Allot Player */}
+            <button
+              type="button"
+              onClick={() => {
+                setQuickAllotSearch('');
+                setShowQuickAllotPicker(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider shadow-lg shadow-amber-500/25 ring-2 ring-amber-400/50 cursor-pointer"
+              title="Quickly search any player in the auction and manually allot to a team at a custom price"
+            >
+              <Gavel className="w-3.5 h-3.5" />
+              <span>MANUAL SELL</span>
+            </button>
           </div>
         }
       />
@@ -1767,6 +1783,17 @@ export default function CommitteeAdminDashboard() {
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         SOLD
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={busyAction}
+                        onClick={() => setManualAllotItem(activeItem)}
+                        className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-amber-500/25 ring-2 ring-amber-400/50 cursor-pointer"
+                        title="Manually allot / sell this active player directly to any team at custom price"
+                      >
+                        <Gavel className="w-4 h-4" />
+                        MANUAL SELL
                       </button>
 
                       <button
@@ -2158,6 +2185,15 @@ export default function CommitteeAdminDashboard() {
                           className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-extrabold cursor-pointer"
                         >
                           Start
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setManualAllotItem(qItem)}
+                          className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold flex items-center gap-1 cursor-pointer"
+                          title="Manually Allot / Sell this queued player"
+                        >
+                          <Gavel className="w-3 h-3 text-amber-400" />
+                          Sell
                         </button>
                       </div>
                     </div>
@@ -5508,6 +5544,129 @@ export default function CommitteeAdminDashboard() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* QUICK ALLOT PLAYER SEARCH & PICKER MODAL */}
+      {showQuickAllotPicker && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl rounded-3xl bg-slate-900 border border-amber-500/50 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-amber-500 text-slate-950">
+                  <Gavel className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="font-display font-extrabold text-lg text-white">
+                    Manual Sell / Allot Player
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Search and pick any player from the auction to manually assign to a buyer team
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuickAllotPicker(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="my-3 relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                autoFocus
+                value={quickAllotSearch}
+                onChange={e => setQuickAllotSearch(e.target.value)}
+                placeholder="Search player name or pool..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 focus:border-amber-500 text-sm text-white"
+              />
+            </div>
+
+            {/* Players List */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[220px]">
+              {(auction?.items || [])
+                .filter(item => {
+                  if (!quickAllotSearch) return true;
+                  const q = quickAllotSearch.toLowerCase();
+                  return (
+                    item.name?.toLowerCase().includes(q) ||
+                    item.poolName?.toLowerCase().includes(q)
+                  );
+                })
+                .slice(0, 60)
+                .map(item => (
+                  <div
+                    key={item.id}
+                    className="p-2.5 rounded-2xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <ItemImage item={item} className="w-10 h-10 rounded-xl object-cover shrink-0" />
+                      <div className="min-w-0">
+                        <div className="font-bold text-white text-sm truncate">{item.name}</div>
+                        <div className="text-[11px] text-slate-400">
+                          {item.poolName} • Base: {formatCurrency(item.basePrice, cur)}
+                          {item.status === 'SOLD' && item.soldAmount && (
+                            <span className="text-emerald-400 font-mono-num font-bold ml-1.5">
+                              • Sold for {formatCurrency(item.soldAmount, cur)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {item.status === 'SOLD' ? (
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold border border-emerald-500/30 truncate max-w-[100px]">
+                          🏆 {(auction?.teams || []).find(t => t.id === item.soldToTeamId)?.shortName || 'SOLD'}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-extrabold">
+                          {item.status || 'QUEUED'}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setManualAllotItem(item);
+                          setShowQuickAllotPicker(false);
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs uppercase tracking-wider shadow cursor-pointer flex items-center gap-1"
+                      >
+                        <Gavel className="w-3 h-3" />
+                        {item.status === 'SOLD' ? 'Edit Sale' : 'Allot / Sell'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              {(auction?.items || []).filter(item => {
+                if (!quickAllotSearch) return true;
+                const q = quickAllotSearch.toLowerCase();
+                return (
+                  item.name?.toLowerCase().includes(q) ||
+                  item.poolName?.toLowerCase().includes(q)
+                );
+              }).length === 0 && (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  No players found matching "{quickAllotSearch}".
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowQuickAllotPicker(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
