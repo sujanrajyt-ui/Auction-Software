@@ -2286,8 +2286,8 @@ export default function CommitteeAdminDashboard() {
                         </div>
                       </div>
 
-                      {/* Pool Filter Pills: Available vs Sold vs Unsold */}
-                      <div className="flex items-center gap-1.5 mt-3 text-xs font-bold">
+                      {/* Pool Filter Pills: Available vs Sold vs Unsold vs All */}
+                      <div className="flex items-center gap-1.5 mt-3 text-xs font-bold flex-wrap">
                         <button
                           type="button"
                           onClick={() => setPoolViewFilter(prev => ({ ...prev, [pool.id]: 'QUEUED' }))}
@@ -2325,6 +2325,17 @@ export default function CommitteeAdminDashboard() {
                             Unsold ({unsoldInPool.length})
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setPoolViewFilter(prev => ({ ...prev, [pool.id]: 'ALL' }))}
+                          className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                            currentPoolFilter === 'ALL'
+                              ? 'bg-indigo-600 text-white font-extrabold shadow'
+                              : 'bg-slate-950/80 text-slate-400 hover:text-white border border-slate-800'
+                          }`}
+                        >
+                          All ({poolItems.length})
+                        </button>
                       </div>
 
                       {/* Quick Add Player into this Pool Set */}
