@@ -1002,6 +1002,20 @@ const BACKUP_TABLES_IN_ORDER = [
   'audit_logs'
 ];
 
+function sanitizeSqliteValue(v, colName) {
+  if (v === undefined || v === null) {
+    if (colName === 'createdAt' || colName === 'updatedAt') return new Date().toISOString();
+    if (colName === 'disabled' || colName === 'sortOrder' || colName === 'isLegendPool') return 0;
+    return null;
+  }
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (typeof v === 'object') {
+    if (Buffer.isBuffer(v)) return v;
+    return JSON.stringify(v);
+  }
+  return v;
+}
+
 app.post('/api/platform/backup/save', requireAdmin, async (req, res) => {
   try {
     try {
@@ -1100,20 +1114,19 @@ app.post('/api/platform/backup/restore', requireAdmin, async (req, res) => {
           for (const table of tablesPresent) {
             const rows = snapshot[table];
             if (!rows || rows.length === 0) continue;
-            const tableColsSet = new Set(
-              db
-                .prepare(`PRAGMA table_info(${table})`)
-                .all()
-                .map(c => c.name)
-            );
+            const tableCols = db.prepare(`PRAGMA table_info(${table})`).all();
+            const tableColsSet = new Set(tableCols.map(c => c.name));
             const cols = Object.keys(rows[0]).filter(c => tableColsSet.has(c));
+            if (tableColsSet.has('createdAt') && !cols.includes('createdAt')) {
+              cols.push('createdAt');
+            }
             if (cols.length === 0) continue;
             const placeholders = cols.map(() => '?').join(', ');
             const stmt = db.prepare(
               `INSERT OR REPLACE INTO ${table} (${cols.map(c => `"${c}"`).join(', ')}) VALUES (${placeholders})`
             );
             for (const row of rows) {
-              stmt.run(...cols.map(c => (row[c] === undefined ? null : row[c])));
+              stmt.run(...cols.map(c => sanitizeSqliteValue(row[c], c)));
             }
           }
         } finally {
