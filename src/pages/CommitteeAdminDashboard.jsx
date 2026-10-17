@@ -166,6 +166,7 @@ export default function CommitteeAdminDashboard() {
   const [refreshingAllImages, setRefreshingAllImages] = useState(false);
   const [refreshingStats, setRefreshingStats] = useState(false);
   const [restartConfirmText, setRestartConfirmText] = useState('');
+  const cur = auction?.currency || 'INR';
 
   useEffect(() => {
     if (auction) {
@@ -173,6 +174,18 @@ export default function CommitteeAdminDashboard() {
       setMaxRetConfigInput(String(auction.maxRetentionsPerTeam ?? 3));
     }
   }, [auction?.id, auction?.maxRtmPerTeam, auction?.maxRetentionsPerTeam]);
+
+  // Reset manual allot form whenever target item changes (Top-level Hook to satisfy Rules of Hooks)
+  useEffect(() => {
+    if (manualAllotItem) {
+      setManualAllotTeamId(manualAllotItem.soldToTeamId || (auction?.teams?.[0]?.id || ''));
+      setManualAllotAmountInput(
+        formatCurrency(manualAllotItem.soldAmount || manualAllotItem.basePrice, cur)
+      );
+      setManualAllotStatus(manualAllotItem.status === 'SOLD' ? 'SOLD' : 'SOLD');
+      setManualAllotOverride(false);
+    }
+  }, [manualAllotItem, cur, auction?.teams]);
 
   const showNotice = (msg, type = 'success') => {
     setToast({ msg, type });
@@ -204,7 +217,6 @@ export default function CommitteeAdminDashboard() {
     );
   }
 
-  const cur = auction.currency;
   const activeItem = auction.activeItem;
   const leadingTeam = activeItem?.highestBidderTeam || null;
   const isIpl = isIplAuction(auction);
@@ -746,18 +758,7 @@ export default function CommitteeAdminDashboard() {
     }
   };
 
-  // Manual Allotment Handler (Pool Sets & Showcase)
-  useEffect(() => {
-    if (manualAllotItem) {
-      setManualAllotTeamId(manualAllotItem.soldToTeamId || (auction?.teams?.[0]?.id || ''));
-      setManualAllotAmountInput(
-        formatCurrency(manualAllotItem.soldAmount || manualAllotItem.basePrice, cur)
-      );
-      setManualAllotStatus(manualAllotItem.status === 'SOLD' ? 'SOLD' : 'SOLD');
-      setManualAllotOverride(false);
-    }
-  }, [manualAllotItem, cur, auction?.teams]);
-
+  // Manual Allotment Handler (Pool Sets, Control Desk & Showcase)
   const handleManualAllotSubmit = async e => {
     e.preventDefault();
     if (!manualAllotItem) return;
